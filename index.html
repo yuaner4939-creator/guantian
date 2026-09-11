@@ -2436,15 +2436,31 @@
       fadeRaf = requestAnimationFrame(step);
     }
 
+    var UNLOCK_EVENTS = ['click', 'touchstart', 'pointerdown', 'keydown'];
+
+    function removeUnlock() {
+      for (var i = 0; i < UNLOCK_EVENTS.length; i++) {
+        document.removeEventListener(UNLOCK_EVENTS[i], unlock, true);
+      }
+    }
+
+    function unlock() {
+      if (ready && !muted && audio && audio.paused) startPlayback();
+    }
+
     function startPlayback() {
       if (!audio || !ready || muted) return;
       audio.volume = 0;
       var p = audio.play();
       if (p && typeof p.then === 'function') {
-        p.then(function () { fadeTo(TARGET_VOLUME, FADE_MS); })
-         .catch(function () { /* 自动播放被浏览器拦截，等待首次交互解锁 */ });
+        p.then(function () {
+          fadeTo(TARGET_VOLUME, FADE_MS);
+          removeUnlock();
+        })
+         .catch(function () { /* 自动播放被拦截：等待首次交互（click/touchstart/pointerdown/keydown） */ });
       } else {
         fadeTo(TARGET_VOLUME, FADE_MS);
+        removeUnlock();
       }
     }
 
@@ -2489,10 +2505,10 @@
 
     if (btn) btn.addEventListener('click', function () { setMuted(!muted); });
 
-    // Autoplay 解锁：浏览器禁止自动播放时，在任意首次交互后开始播放
-    window.addEventListener('pointerdown', function () {
-      if (ready && !muted && audio && audio.paused) startPlayback();
-    });
+    // 注册“首次交互自动播放”监听（capture 阶段尽早捕获；成功播放后统一移除）
+    for (var i = 0; i < UNLOCK_EVENTS.length; i++) {
+      document.addEventListener(UNLOCK_EVENTS[i], unlock, true);
+    }
 
     trySource(0);
   })();

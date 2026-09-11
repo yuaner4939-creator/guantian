@@ -1,0 +1,2520 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>观天</title>
+<style>
+  :root {
+    --bg-primary: #080A0F;
+    --bg-secondary: #10141B;
+    --text-primary: #E8E2D2;
+    --text-secondary: #8D8B83;
+    --text-muted: #5D5C57;
+    --accent-red: #8F3D35;
+    --star-primary: rgba(232, 226, 210, 0.85);
+    --star-secondary: rgba(232, 226, 210, 0.35);
+    --grid-line: rgba(232, 226, 210, 0.08);
+    --border: rgba(232, 226, 210, 0.18);
+
+    --font-title: "LiSu", "隶书", "华文隶书", "STLiti", "Baoli SC", "FangSong", "仿宋", "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+    --han-bronze: #7A6A4E;
+    --han-ochre: #8C6A3A;
+    --han-jade: #56645F;
+    --han-lacquer: #120F0B;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  [hidden] { display: none !important; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .back-button { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); font-size: 11px; letter-spacing: 0.12em; padding: 4px 10px; cursor: pointer; transition: color 300ms ease, border-color 300ms ease; }
+  .back-button:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+  .back-button:focus-visible { outline: 1px solid var(--accent-red); outline-offset: 2px; }
+
+  /* ================= Intro ================= */
+  .intro-page {
+    width: 100vw; height: 100dvh; overflow: hidden; position: relative; background: #080A0F;
+  }
+  .star-canvas {
+    position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+    animation: intro-fade 1800ms cubic-bezier(0.22, 1, 0.36, 1) 0ms both;
+  }
+  .star-map-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+  .star-tooltip {
+    position: fixed; left: 0; top: 0; transform: translate(-50%, -130%);
+    font-size: 11px; letter-spacing: 0.12em; color: var(--text-secondary);
+    background: rgba(8, 10, 15, 0.92); border: 1px solid var(--border);
+    padding: 5px 8px; pointer-events: none; white-space: nowrap;
+    opacity: 0; transition: opacity 140ms ease; z-index: 20;
+  }
+  .star-tooltip[data-visible="true"] { opacity: 1; }
+  .title-container {
+    position: absolute; left: 50%; top: 45%; transform: translate(-50%, calc(-50% + 12px));
+    display: flex; flex-direction: column; align-items: center; text-align: center; z-index: 10;
+    opacity: 0; pointer-events: none; transition: opacity 800ms ease, transform 800ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .title-container.revealed { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%); }
+  .game-title {
+    font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+    font-size: clamp(52px, 7vw, 96px); font-weight: 400; line-height: 1; letter-spacing: 0.08em;
+    color: var(--text-primary); margin: 0;
+  }
+  .era-label { margin-top: 24px; font-size: 12px; font-weight: 400; letter-spacing: 0.32em; color: var(--text-secondary); }
+  .start-button {
+    margin-top: 64px; background: transparent; border: none; color: var(--text-secondary);
+    font-size: 13px; letter-spacing: 0.18em; padding: 8px 16px; cursor: pointer; position: relative;
+  }
+  .narrative-container {
+    position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; align-items: center; text-align: center; z-index: 10;
+    width: 100%; max-width: 560px; padding: 0 32px; transition: opacity 550ms ease;
+  }
+  .narrative-container.leaving { opacity: 0; }
+  .narrative-stage { display: flex; flex-direction: column; align-items: center; }
+  .narrative-line { white-space: pre-line; }
+  .narrative-primary {
+    margin: 6px 0; font-size: clamp(26px, 3.4vw, 42px); font-weight: 400; line-height: 1.4;
+    letter-spacing: 0.16em; color: var(--text-primary);
+  }
+  .narrative-secondary {
+    margin-top: 22px; max-width: 460px; font-size: clamp(13px, 1.6vw, 15px); font-weight: 400;
+    line-height: 1.9; letter-spacing: 0.06em; color: var(--text-secondary);
+  }
+  .narrative-current {
+    animation: intro-rise-8 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .skip-button {
+    position: absolute; right: 32px; bottom: 32px; background: transparent; border: none;
+    color: var(--text-muted); font-size: 12px; letter-spacing: 0.2em; padding: 8px 12px;
+    cursor: pointer; z-index: 15; transition: color 300ms ease;
+  }
+  .skip-button:hover { color: var(--text-secondary); }
+  .skip-button:focus-visible { outline: 1px solid var(--accent-red); outline-offset: 4px; }
+  .start-button::after {
+    content: ""; position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
+    width: 24px; height: 1px; background: var(--accent-red); transition: width 300ms ease;
+  }
+  .start-button:hover { color: var(--text-primary); }
+  .start-button:hover::after { width: 100%; }
+  .start-button:focus-visible { outline: 1px solid var(--accent-red); outline-offset: 6px; }
+
+  /* ================= Observe ================= */
+  .observe-page {
+    width: 100vw; height: 100dvh; min-height: 100dvh; background: var(--bg-primary);
+    color: var(--text-primary); overflow: hidden; display: flex; flex-direction: column;
+  }
+  .observe-header {
+    height: 64px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; border-bottom: 1px solid var(--border); z-index: 10;
+  }
+  .observe-header-title { font-size: 16px; font-weight: 400; letter-spacing: 0.08em; color: var(--text-primary); }
+  .observe-header-count { font-size: 11px; letter-spacing: 0.12em; color: var(--text-secondary); }
+  .observe-main { flex: 1; display: grid; grid-template-columns: 22% 56% 22%; min-height: 0; }
+  .observe-panel { padding: 24px; overflow-y: auto; z-index: 5; font-size: 13px; line-height: 1.8; }
+  .observe-panel-left { border-right: 1px solid var(--border); }
+  .observe-panel-right { border-left: 1px solid var(--border); }
+  .panel-title { font-size: 11px; font-weight: 400; letter-spacing: 0.2em; color: var(--text-secondary); margin: 0 0 16px; }
+  .obs-section { margin-bottom: 32px; }
+  .obs-section:last-child { margin-bottom: 0; }
+  .obs-row { display: flex; align-items: baseline; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(232,226,210,0.06); }
+  .obs-row:last-child { border-bottom: none; }
+  .obs-row dt { font-size: 11px; letter-spacing: 0.12em; color: var(--text-muted); }
+  .obs-row dd { margin: 0; font-size: 13px; color: var(--text-primary); text-align: right; }
+  .mansion-name { font-size: 20px; font-weight: 400; letter-spacing: 0.12em; color: var(--text-primary); margin-bottom: 4px; }
+  .mansion-direction { font-size: 12px; letter-spacing: 0.12em; color: var(--text-secondary); }
+  .mansion-divider { height: 1px; background: var(--border); margin: 16px 0; }
+  .mansion-sub-label { font-size: 11px; font-weight: 400; letter-spacing: 0.2em; color: var(--text-muted); margin: 0 0 10px; }
+  .mansion-stars { display: flex; flex-wrap: wrap; gap: 6px 10px; }
+  .mansion-star { font-size: 12px; color: var(--text-secondary); letter-spacing: 0.04em; }
+  .mansion-star.primary { color: var(--text-primary); }
+  .mansion-status { font-size: 13px; letter-spacing: 0.12em; color: var(--text-secondary); }
+  .mansion-status.anomaly { color: var(--accent-red); }
+  .mansion-note { margin-top: 8px; font-size: 12px; line-height: 1.8; color: var(--text-secondary); }
+  .celestial-globe { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+  .celestial-globe canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+  .celestial-globe canvas:active { cursor: grabbing; }
+  .celestial-tooltip {
+    position: absolute; left: 0; top: 0; transform: translate(-50%, -130%);
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    font-size: 11px; letter-spacing: 0.12em; color: var(--text-primary);
+    background: rgba(8, 10, 15, 0.92); border: 1px solid var(--border);
+    padding: 6px 10px; pointer-events: none; white-space: nowrap; text-align: center;
+    opacity: 0; transition: opacity 140ms ease; z-index: 20;
+  }
+  .celestial-tooltip span { font-size: 10px; letter-spacing: 0.1em; color: var(--text-muted); }
+  .celestial-tooltip span.hint { color: var(--accent-red); }
+  .celestial-tooltip[data-visible="true"] { opacity: 1; }
+  .record-empty { font-size: 13px; letter-spacing: 0.12em; color: var(--text-muted); }
+  .record-list { list-style: none; margin: 0; padding: 0; }
+  .record-item { padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .record-item:last-child { border-bottom: none; }
+  .record-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+  .record-index { font-size: 11px; color: var(--text-muted); }
+  .record-time { font-size: 11px; color: var(--text-muted); }
+  .record-title { font-size: 15px; letter-spacing: 0.08em; color: var(--text-primary); margin-bottom: 6px; }
+  .record-content { font-size: 13px; line-height: 1.8; color: var(--text-secondary); }
+
+  .time-control {
+    height: 96px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: center;
+    padding: 0 24px; border-top: 1px solid var(--border); z-index: 5;
+  }
+  .time-control-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+  .time-control-title { font-size: 11px; letter-spacing: 0.2em; color: var(--text-secondary); }
+  .time-control-date { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; letter-spacing: 0.12em; color: var(--text-muted); }
+  .time-control-range { -webkit-appearance: none; appearance: none; width: 100%; height: 24px; background: transparent; cursor: pointer; margin: 0; }
+  .time-control-range::-webkit-slider-runnable-track {
+    height: 1px;
+    background: linear-gradient(to right, var(--accent-red) 0%, var(--accent-red) var(--progress, 50%), rgba(232,226,210,0.18) var(--progress, 50%), rgba(232,226,210,0.18) 100%);
+  }
+  .time-control-range::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; height: 8px; width: 8px; border-radius: 50%;
+    background: var(--text-primary); border: none; margin-top: -3.5px; cursor: pointer; transition: background 300ms ease;
+  }
+  .time-control-range::-webkit-slider-thumb:hover { background: var(--accent-red); }
+  .time-control-range::-moz-range-track {
+    height: 1px;
+    background: linear-gradient(to right, var(--accent-red) 0%, var(--accent-red) var(--progress, 50%), rgba(232,226,210,0.18) var(--progress, 50%), rgba(232,226,210,0.18) 100%);
+  }
+  .time-control-range::-moz-range-thumb { height: 8px; width: 8px; border-radius: 50%; background: var(--text-primary); border: none; cursor: pointer; transition: background 300ms ease; }
+  .time-control-range::-moz-range-thumb:hover { background: var(--accent-red); }
+  .time-control-ticks { display: flex; justify-content: space-between; margin-top: 10px; }
+  .time-control-tick { font-size: 11px; letter-spacing: 0.12em; color: var(--text-muted); transition: color 300ms ease; }
+  .time-control-tick.active { color: var(--text-primary); }
+
+  .observe-action { height: 72px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-top: 1px solid var(--border); z-index: 5; }
+  .action-button {
+    position: relative; background: transparent; border: none; padding: 8px 24px; font-family: inherit;
+    font-size: 13px; letter-spacing: 0.24em; color: var(--text-secondary); cursor: pointer; transition: color 300ms ease;
+  }
+  .action-button::after {
+    content: ""; position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
+    width: 24px; height: 1px; background: var(--accent-red); transition: width 300ms ease;
+  }
+  .action-button:not(:disabled):hover { color: var(--text-primary); }
+  .action-button:not(:disabled):hover::after { width: 100%; }
+  .action-button:disabled { color: var(--text-muted); cursor: not-allowed; }
+  .action-button:disabled::after { background: var(--text-muted); }
+  .action-button:focus-visible { outline: 1px solid var(--accent-red); outline-offset: 6px; }
+
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(8,10,15,0.6);
+    display: flex; align-items: center; justify-content: center; z-index: 50;
+  }
+  .judgement-modal { width: min(560px, 90vw); background: #10141B; border: 1px solid var(--border); padding: 40px; }
+  .judgement-title { margin: 0 0 32px; font-size: 16px; font-weight: 400; letter-spacing: 0.2em; color: var(--text-primary); text-align: center; }
+  .judgement-options { display: flex; flex-direction: column; gap: 12px; }
+  .judgement-option {
+    background: transparent; border: 1px solid var(--border); padding: 14px 16px; font-family: inherit;
+    font-size: 13px; letter-spacing: 0.08em; color: var(--text-secondary); text-align: left; cursor: pointer;
+    transition: color 300ms ease, border-color 300ms ease;
+  }
+  .judgement-option:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+
+  .judgement-feedback {
+    position: fixed; inset: 0; background: rgba(8,10,15,0.72);
+    display: flex; align-items: center; justify-content: center; z-index: 60;
+    font-size: 16px; letter-spacing: 0.24em; color: var(--text-primary);
+  }
+  .transition-overlay { position: fixed; inset: 0; background: #080A0F; z-index: 100; pointer-events: none; opacity: 0; transition: opacity 900ms ease-in; }
+  .transition-overlay.active { opacity: 1; }
+
+  .drought-placeholder {
+    width: 100vw; height: 100dvh; display: flex; align-items: center; justify-content: center;
+    background: var(--bg-primary); color: var(--text-secondary); font-size: 13px; letter-spacing: 0.32em;
+  }
+
+  @keyframes intro-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes intro-rise-12 { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes intro-rise-8 { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 639px) {
+    .game-title { font-size: 52px; }
+    .era-label { font-size: 10px; }
+    .start-button { font-size: 12px; }
+    .narrative-container { padding: 0 24px; }
+    .narrative-primary { font-size: 24px; }
+    .skip-button { right: 20px; bottom: 20px; }
+  }
+
+  @media (max-width: 767px) {
+    .observe-page { height: auto; min-height: 100dvh; overflow-y: auto; }
+    .observe-main { display: flex; flex-direction: column; }
+    .celestial-globe { order: -1; height: min(65vh, 560px); flex-shrink: 0; }
+    .observe-panel { overflow: visible; }
+    .observe-panel-left { order: 0; border-right: none; border-bottom: 1px solid var(--border); }
+    .observe-panel-right { order: 1; border-left: none; }
+    .time-control { order: 2; }
+    .observe-action { order: 3; }
+  }
+
+  /* ================= Drought ================= */
+  :root {
+    --map-line: rgba(232, 226, 210, 0.22);
+    --map-line-muted: rgba(232, 226, 210, 0.10);
+    --map-water: rgba(120, 150, 165, 0.35);
+    --map-land: rgba(232, 226, 210, 0.05);
+    --map-active: rgba(232, 226, 210, 0.65);
+  }
+  .page-drought {
+    width: 100vw; height: 100dvh; overflow: hidden;
+    display: grid; grid-template-rows: 64px 1fr auto auto;
+    background: var(--bg-primary); color: var(--text-primary);
+  }
+  .drought-header { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid var(--border); z-index: 10; }
+  .drought-header-title { font-size: 16px; letter-spacing: 0.08em; color: var(--text-primary); }
+  .drought-header-sub { font-size: 12px; letter-spacing: 0.2em; color: var(--text-secondary); }
+  .drought-header-progress { font-size: 11px; letter-spacing: 0.12em; color: var(--text-secondary); }
+  .drought-main { display: grid; grid-template-columns: 22% 56% 22%; min-height: 0; }
+  .event-panel { padding: 32px 24px; border-right: 1px solid var(--border); overflow-y: auto; z-index: 5; font-size: 13px; line-height: 1.8; }
+  .event-title { font-size: 32px; font-weight: 400; font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif; letter-spacing: 0.08em; margin: 0 0 12px; color: var(--text-primary); }
+  .event-location { font-size: 12px; letter-spacing: 0.12em; color: var(--text-secondary); margin-bottom: 20px; }
+  .event-body { font-size: 13px; line-height: 1.9; color: var(--text-secondary); white-space: pre-line; margin-bottom: 28px; }
+  .event-record { margin-bottom: 28px; }
+  .event-record-text { font-size: 12px; line-height: 1.9; color: var(--text-secondary); white-space: pre-line; margin: 0; }
+  .event-tasks { margin-bottom: 28px; }
+  .task-list { list-style: none; margin: 0; padding: 0; }
+  .task-item { display: flex; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px solid rgba(232,226,210,0.06); }
+  .task-item:last-child { border-bottom: none; }
+  .task-mark { font-size: 11px; color: var(--text-muted); }
+  .task-label { font-size: 13px; color: var(--text-secondary); }
+  .task-item.done .task-label { color: var(--text-primary); }
+  .task-item.done .task-mark { color: var(--accent-red); }
+  .weather-inference { margin-top: 4px; }
+  .causal-chain { margin: 12px 0 16px; }
+  .causal-step { display: flex; flex-direction: column; align-items: flex-start; }
+  .causal-label { font-size: 13px; color: var(--text-primary); letter-spacing: 0.08em; }
+  .causal-arrow { font-size: 13px; color: var(--text-muted); margin: 4px 0 4px 6px; }
+  .weather-inference-text { font-size: 12px; line-height: 1.9; color: var(--text-secondary); white-space: pre-line; margin: 0; }
+  .evidence-panel { padding: 24px; border-left: 1px solid var(--border); overflow-y: auto; z-index: 5; font-size: 13px; line-height: 1.8; }
+  .evidence-empty { font-size: 13px; letter-spacing: 0.12em; color: var(--text-muted); }
+  .evidence-list { list-style: none; margin: 0; padding: 0; }
+  .evidence-item { padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .evidence-item:last-child { border-bottom: none; }
+  .evidence-index { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+  .evidence-name { font-size: 15px; letter-spacing: 0.08em; color: var(--text-primary); margin-bottom: 6px; }
+  .evidence-desc { font-size: 13px; line-height: 1.8; color: var(--text-secondary); white-space: pre-line; margin-bottom: 10px; }
+  .evidence-observation { font-size: 12px; line-height: 1.8; color: var(--text-muted); white-space: pre-line; }
+  .terrain-map { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+  .terrain-map-svg, .terrain-map-lines { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .terrain-map-svg { z-index: 1; }
+  .terrain-map-lines { pointer-events: none; z-index: 4; }
+  .map-mountain { fill: none; stroke: var(--map-line-muted); stroke-width: 1.5; }
+  .map-river { fill: none; stroke: var(--map-water); stroke-width: 4; stroke-linecap: round; }
+  .map-field { fill: var(--map-land); stroke: var(--map-line-muted); stroke-width: 1; }
+  .map-field-line { stroke: var(--map-line-muted); stroke-width: 0.5; }
+  .map-village rect { fill: var(--map-land); stroke: var(--map-line-muted); stroke-width: 1; }
+  .map-village line { stroke: var(--map-line-muted); stroke-width: 1; }
+  .map-north { font-size: 12px; letter-spacing: 0.2em; fill: var(--text-muted); }
+  .cloud-path { fill: var(--map-land); stroke: var(--map-line); stroke-width: 0.5; }
+  .wind-line { stroke: var(--map-line); stroke-width: 1.2; stroke-dasharray: 8 12; animation: windMove 2.4s linear infinite; }
+  @keyframes windMove { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -40; } }
+  .terrain-map.map-static .wind-line { animation-play-state: paused; }
+  .relation-line { stroke: var(--map-active); stroke-width: 1; stroke-dasharray: 4 6; opacity: 0.7; }
+  .contour-line { fill: none; stroke: var(--map-line-muted); stroke-width: 0.5; opacity: 0.35; }
+  .map-label { font-size: 12px; letter-spacing: 0.2em; fill: var(--text-muted); pointer-events: none; }
+  .moisture-line { fill: none; stroke: var(--map-water); stroke-width: 1; stroke-dasharray: 3 7; opacity: 0.3; animation: moistureFlow 7s linear infinite; }
+  @keyframes moistureFlow { to { stroke-dashoffset: -70; } }
+  .cloud-ellipse { fill: var(--map-land); stroke: var(--map-line); stroke-width: 0.5; transition: stroke 300ms ease, fill 300ms ease; }
+  .rain-line { stroke: var(--map-water); stroke-width: 1; opacity: 0.3; }
+  .field-zone, .river-zone, .cloud-zone, .mountain-range, .wind-zone { cursor: pointer; }
+  .field-zone.investigated .map-field, .river-zone.investigated .map-river, .mountain-range.investigated .map-mountain { stroke: var(--map-active); }
+  .cloud-zone.investigated .cloud-ellipse { stroke: var(--map-active); }
+  .field-zone.selected .map-field, .river-zone.selected .map-river, .mountain-range.selected .map-mountain, .cloud-zone.selected .cloud-ellipse { stroke: var(--accent-red); }
+  .wind-zone { fill: transparent; }
+  .wind-zone.investigated { stroke: var(--map-active); stroke-width: 1; stroke-dasharray: 4 6; opacity: 0.5; }
+  .prediction-path { fill: none; stroke: var(--map-active); stroke-width: 1.5; stroke-dasharray: 6 8; opacity: 0.6; animation: drawPrediction 1200ms ease forwards; }
+  @keyframes drawPrediction { from { stroke-dashoffset: 400; } to { stroke-dashoffset: 0; } }
+  .wind-field-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+  .env-node { position: absolute; transform: translate(-50%, -50%); background: transparent; border: none; padding: 0; margin: 0; cursor: pointer; opacity: 0.45; transition: opacity 300ms ease; display: flex; flex-direction: column; align-items: center; z-index: 5; font-family: inherit; }
+  .env-node:hover { opacity: 0.9; }
+  .env-node.investigated { opacity: 0.9; }
+  .env-node.relation-selected { opacity: 1; }
+  .env-node-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--map-active); background: transparent; transition: background-color 300ms ease; }
+  .env-node.investigated .env-node-dot { background-color: var(--map-active); }
+  .env-node.relation-selected .env-node-dot { background-color: var(--accent-red); border-color: var(--accent-red); }
+  .env-node-label { margin-top: 6px; font-size: 12px; letter-spacing: 0.2em; color: var(--text-secondary); white-space: nowrap; }
+  .env-node.investigated .env-node-label { color: var(--text-primary); }
+  .env-node:focus-visible { outline: 1px solid var(--accent-red); outline-offset: 4px; }
+  .relation-mode { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); z-index: 6; background: rgba(8,10,15,0.88); border: 1px solid var(--border); padding: 12px 18px; text-align: center; max-width: 90%; }
+  .relation-mode-title { font-size: 11px; letter-spacing: 0.2em; color: var(--text-secondary); margin-bottom: 6px; }
+  .relation-mode-hint { font-size: 12px; color: var(--text-muted); }
+  .relation-mode-feedback { font-size: 12px; line-height: 1.7; color: var(--text-primary); }
+  .relation-mode-selection { margin-top: 8px; display: flex; justify-content: center; gap: 8px; }
+  .rm-chip { font-size: 12px; letter-spacing: 0.12em; color: var(--text-primary); border: 1px solid var(--border); padding: 2px 8px; }
+  .investigation-control { border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 32px; min-height: 72px; z-index: 10; }
+  .reasoning-panel { border-top: 1px solid var(--border); display: flex; align-items: center; gap: 24px; padding: 10px 32px; z-index: 9; }
+  .reasoning-head { display: flex; align-items: baseline; gap: 12px; flex-shrink: 0; }
+  .reasoning-title { font-size: 16px; letter-spacing: 0.2em; color: var(--text-primary); }
+  .reasoning-hint { font-size: 11px; letter-spacing: 0.12em; color: var(--text-muted); }
+  .reasoning-chips { display: flex; gap: 16px; flex: 1; }
+  .reasoning-chip { display: flex; align-items: baseline; gap: 6px; font-size: 13px; letter-spacing: 0.08em; color: var(--text-muted); }
+  .reasoning-chip.done { color: var(--text-primary); }
+  .reasoning-chip-mark { font-size: 11px; color: var(--text-muted); }
+  .reasoning-chip.done .reasoning-chip-mark { color: var(--accent-red); }
+  .reasoning-insight { font-size: 12px; line-height: 1.8; color: var(--text-primary); white-space: pre-line; max-width: 420px; }
+  .ic-status { display: flex; flex-direction: column; gap: 2px; }
+  .ic-status-line { font-size: 11px; letter-spacing: 0.12em; color: var(--text-secondary); }
+  .ic-actions { display: flex; align-items: center; gap: 24px; }
+  .ic-btn { position: relative; background: transparent; border: none; padding: 8px 10px; font-family: inherit; font-size: 13px; letter-spacing: 0.18em; color: var(--text-secondary); cursor: pointer; transition: color 300ms ease; }
+  .ic-btn::after { content: ""; position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: 24px; height: 1px; background: var(--accent-red); transition: width 300ms ease; }
+  .ic-btn:hover:not(:disabled) { color: var(--text-primary); }
+  .ic-btn:hover:not(:disabled)::after { width: 100%; }
+  .ic-btn:disabled { color: var(--text-muted); cursor: not-allowed; }
+  .ic-btn:disabled::after { background: var(--text-muted); }
+  .ic-btn:focus-visible { outline: 1px solid var(--accent-red); outline-offset: 6px; }
+  .drought-modal { width: min(640px, 90vw); }
+  .judgement-subtitle { font-size: 12px; letter-spacing: 0.08em; color: var(--text-secondary); text-align: center; margin: -16px 0 28px; line-height: 1.7; }
+  .drought-result { position: fixed; inset: 0; z-index: 60; background: var(--bg-primary); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; animation: intro-fade 400ms ease both; }
+  .drought-result-title { font-size: 16px; letter-spacing: 0.2em; color: var(--text-primary); margin-bottom: 24px; }
+  .drought-result-text { font-size: 14px; line-height: 2; letter-spacing: 0.06em; color: var(--text-primary); white-space: pre-line; max-width: 560px; margin-bottom: 28px; }
+  .drought-result-badge { font-size: 13px; letter-spacing: 0.24em; color: var(--accent-red); margin-bottom: 20px; }
+  .drought-result-understanding { font-size: 13px; line-height: 2; color: var(--text-secondary); white-space: pre-line; max-width: 560px; margin-bottom: 28px; }
+  .drought-result-ability { font-size: 14px; letter-spacing: 0.2em; color: var(--text-secondary); }
+  .drought-result-ability span { color: var(--text-primary); }
+  .placeholder-page { width: 100vw; height: 100dvh; display: flex; align-items: center; justify-content: center; background: var(--bg-primary); color: var(--text-secondary); font-size: 13px; letter-spacing: 0.32em; }
+  @media (max-width: 768px) {
+    .page-drought { height: auto; min-height: 100dvh; display: flex; flex-direction: column; overflow-y: auto; }
+    .drought-main { display: flex; flex-direction: column; min-height: 0; }
+    .event-panel { border-right: none; border-bottom: 1px solid var(--border); }
+    .terrain-map { height: 55vh; min-height: 360px; flex-shrink: 0; }
+    .evidence-panel { border-left: none; max-height: 300px; overflow-y: auto; }
+    .investigation-control { position: sticky; bottom: 0; background: var(--bg-primary); height: 88px; }
+  }
+
+  /* ================= Borrow ================= */
+  .borrow-page { width: 100vw; height: 100dvh; overflow: hidden; display: grid; grid-template-rows: 64px 1fr 88px; background: var(--bg-primary); color: var(--text-primary); }
+  .borrow-main { display: grid; grid-template-columns: 24% 52% 24%; min-height: 0; }
+  .borrow-header { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid var(--border); z-index: 10; }
+  .borrow-header-title { font-size: 16px; letter-spacing: 0.08em; color: var(--text-primary); }
+  .borrow-header-sub { font-size: 16px; letter-spacing: 0.32em; color: var(--text-secondary); }
+  .borrow-header-status { font-size: 11px; letter-spacing: 0.12em; color: var(--text-secondary); }
+  .control-panel { padding: 24px; border-right: 1px solid var(--border); overflow-y: auto; z-index: 5; font-size: 13px; line-height: 1.8; }
+  .cp-section { margin-bottom: 32px; }
+  .cp-section:last-child { margin-bottom: 0; }
+  .env-list { margin: 0; }
+  .env-row { display: flex; align-items: baseline; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(232,226,210,0.06); }
+  .env-row:last-child { border-bottom: none; }
+  .env-row dt { font-size: 11px; letter-spacing: 0.12em; color: var(--text-muted); }
+  .env-row dd { margin: 0; display: flex; flex-direction: column; align-items: flex-end; }
+  .env-row dd span { font-size: 13px; color: var(--text-primary); }
+  .env-sub { font-size: 11px; color: var(--text-muted); letter-spacing: 0.08em; }
+  .momentum-list { list-style: none; margin: 0; padding: 0; }
+  .momentum-option { width: 100%; display: flex; align-items: baseline; justify-content: space-between; background: transparent; border: none; padding: 10px 0; font-family: inherit; font-size: 13px; letter-spacing: 0.08em; color: var(--text-secondary); cursor: pointer; border-bottom: 1px solid rgba(232,226,210,0.06); transition: color 300ms ease; text-align: left; }
+  .momentum-option:last-child { border-bottom: none; }
+  .momentum-option:hover:not(:disabled) { color: var(--text-primary); }
+  .momentum-option.active { color: var(--text-primary); }
+  .momentum-option.active .momentum-name::before { content: "● "; color: var(--accent-red); }
+  .momentum-option.locked { color: var(--text-muted); cursor: not-allowed; }
+  .momentum-note { font-size: 11px; color: var(--text-muted); letter-spacing: 0.08em; }
+  .momentum-state { font-size: 11px; color: var(--text-muted); }
+  .slider-control { margin-bottom: 24px; }
+  .slider-control:last-child { margin-bottom: 0; }
+  .slider-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+  .slider-label { font-size: 11px; letter-spacing: 0.2em; color: var(--text-secondary); }
+  .slider-value { font-size: 12px; color: var(--text-primary); }
+  .slider-ticks { display: flex; justify-content: space-between; margin-top: 8px; font-size: 10px; letter-spacing: 0.08em; color: var(--text-muted); }
+  .range-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 44px; background: transparent; cursor: pointer; margin: 0; }
+  .range-slider::-webkit-slider-runnable-track { height: 1px; background: linear-gradient(to right, var(--accent-red) 0%, var(--accent-red) var(--progress, 50%), rgba(232,226,210,0.18) var(--progress, 50%), rgba(232,226,210,0.18) 100%); }
+  .range-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; height: 8px; width: 8px; border-radius: 50%; background: var(--text-primary); border: none; margin-top: -3.5px; cursor: pointer; transition: background 300ms ease; }
+  .range-slider::-webkit-slider-thumb:hover { background: var(--accent-red); }
+  .range-slider::-moz-range-track { height: 1px; background: linear-gradient(to right, var(--accent-red) 0%, var(--accent-red) var(--progress, 50%), rgba(232,226,210,0.18) var(--progress, 50%), rgba(232,226,210,0.18) 100%); }
+  .range-slider::-moz-range-thumb { height: 8px; width: 8px; border-radius: 50%; background: var(--text-primary); border: none; cursor: pointer; transition: background 300ms ease; }
+  .range-slider::-moz-range-thumb:hover { background: var(--accent-red); }
+  .simulation-map { position: relative; min-width: 0; min-height: 0; }
+  .sim-map-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .borrow-mountain { fill: none; stroke: var(--map-line-muted); stroke-width: 1.5; }
+  .borrow-river { fill: none; stroke: var(--map-water); stroke-width: 4; stroke-linecap: round; }
+  .borrow-village rect { fill: var(--map-land); stroke: var(--map-line-muted); stroke-width: 1; }
+  .borrow-village line { stroke: var(--map-line-muted); stroke-width: 1; }
+  .borrow-field rect { fill: var(--map-land); stroke: var(--map-line-muted); stroke-width: 1; transition: fill 400ms ease; }
+  .borrow-field.wet rect { fill: rgba(120,150,165,0.18); }
+  .borrow-field line { stroke: var(--map-line-muted); stroke-width: 0.5; }
+  .moisture-flow { fill: none; stroke: var(--map-water); stroke-width: 1.5; stroke-dasharray: 4 8; animation: moistureMove 3s linear infinite; }
+  @keyframes moistureMove { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -48; } }
+  .borrow-cloud { fill: var(--map-land); stroke: var(--map-line); stroke-width: 0.5; }
+  .borrow-wind-line { stroke: var(--map-line); stroke-width: 1.2; stroke-dasharray: 8 12; animation: borrowWindMove 2.4s linear infinite; }
+  @keyframes borrowWindMove { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -40; } }
+  .rain-line { stroke: var(--map-water); stroke-width: 1; opacity: 0.45; animation: rainFall 1.2s linear infinite; }
+  @keyframes rainFall { from { transform: translateY(0); } to { transform: translateY(140px); } }
+  .result-panel { padding: 24px; border-left: 1px solid var(--border); overflow-y: auto; z-index: 5; font-size: 13px; line-height: 1.8; }
+  .natural-feedback { font-size: 13px; line-height: 1.9; color: var(--text-secondary); white-space: pre-line; margin-bottom: 28px; min-height: 5em; }
+  .indicator { margin-bottom: 18px; }
+  .indicator-label { font-size: 11px; letter-spacing: 0.12em; color: var(--text-muted); margin-bottom: 8px; }
+  .indicator-bar { height: 1px; background: var(--border); position: relative; }
+  .indicator-fill { position: absolute; left: 0; top: 0; height: 1px; background: var(--text-primary); transition: width 300ms ease; }
+  .borrow-action-bar { border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 32px; z-index: 10; }
+  .borrow-action-mode { font-size: 11px; letter-spacing: 0.12em; color: var(--text-secondary); }
+  .borrow-result { position: fixed; inset: 0; z-index: 60; background: var(--bg-primary); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; overflow-y: auto; animation: intro-fade 400ms ease both; }
+  .borrow-result-title { font-size: 20px; letter-spacing: 0.24em; color: var(--text-primary); margin-bottom: 28px; }
+  .borrow-result-text { font-size: 14px; line-height: 2; letter-spacing: 0.06em; color: var(--text-primary); white-space: pre-line; max-width: 560px; margin-bottom: 24px; }
+  .borrow-result-ability { font-size: 13px; letter-spacing: 0.2em; color: var(--text-secondary); margin-bottom: 32px; }
+  .borrow-result-ability span { color: var(--text-primary); }
+  .knowledge-tree { display: flex; flex-direction: column; align-items: center; margin-bottom: 36px; }
+  .knowledge-step { display: flex; flex-direction: column; align-items: center; }
+  .knowledge-name { font-size: 13px; letter-spacing: 0.24em; color: var(--text-muted); }
+  .knowledge-name.current { color: var(--text-primary); }
+  .knowledge-arrow { font-size: 13px; color: var(--text-muted); margin: 4px 0; }
+  .borrow-result-question { font-size: 13px; line-height: 2; color: var(--text-secondary); white-space: pre-line; max-width: 560px; margin-bottom: 32px; }
+  @media (max-width: 768px) {
+    .borrow-page { height: auto; min-height: 100dvh; display: flex; flex-direction: column; overflow-y: auto; }
+    .borrow-main { display: flex; flex-direction: column; min-height: 0; }
+    .control-panel { border-right: none; border-bottom: 1px solid var(--border); }
+    .simulation-map { height: 52vh; min-height: 420px; flex-shrink: 0; }
+    .result-panel { border-left: none; }
+    .borrow-action-bar { position: sticky; bottom: 0; background: var(--bg-primary); height: 88px; }
+  }
+
+  /* ================= Awakening ================= */
+  .awakening-page { width: 100vw; height: 100dvh; overflow: hidden; display: grid; grid-template-rows: 64px 1fr 88px; background: var(--bg-primary); color: var(--text-primary); }
+  .awakening-main { display: grid; grid-template-columns: 25% 50% 25%; min-height: 0; }
+  .awakening-header { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid var(--border); z-index: 10; }
+  .awakening-header-title { font-size: 16px; letter-spacing: 0.08em; color: var(--text-primary); }
+  .awakening-header-sub { font-size: 16px; letter-spacing: 0.32em; color: var(--text-secondary); }
+  .awakening-header-status { font-size: 11px; letter-spacing: 0.12em; color: var(--text-secondary); }
+  .knowledge-panel { padding: 24px; border-right: 1px solid var(--border); overflow-y: auto; z-index: 5; }
+  .knowledge-category { margin-bottom: 20px; }
+  .knowledge-category-label { font-size: 11px; letter-spacing: 0.2em; color: var(--text-muted); margin: 0 0 6px; font-weight: 400; }
+  .knowledge-node { width: 100%; display: flex; align-items: baseline; gap: 10px; padding: 14px 0 14px 10px; background: transparent; border: none; border-left: 2px solid transparent; border-bottom: 1px solid var(--border); opacity: 0.65; cursor: pointer; font-family: inherit; text-align: left; transition: opacity 300ms ease, border-color 300ms ease; }
+  .knowledge-node:hover { opacity: 1; }
+  .knowledge-node.selected { opacity: 1; border-left: 2px solid var(--accent-red); }
+  .knowledge-node:disabled { cursor: default; }
+  .knowledge-index { font-size: 11px; color: var(--text-muted); }
+  .knowledge-name { font-size: 13px; color: var(--text-primary); letter-spacing: 0.08em; }
+  .knowledge-status { margin-left: auto; font-size: 11px; color: var(--text-muted); letter-spacing: 0.08em; }
+  .knowledge-node:focus-visible { outline: 1px solid var(--accent-red); outline-offset: 2px; }
+  .evolution-graph { position: relative; min-width: 0; min-height: 0; }
+  .evolution-graph svg { width: 100%; height: 100%; display: block; }
+  .base-connection { stroke: var(--map-line-muted); stroke-width: 1; opacity: 0.4; }
+  .evo-connection { stroke: var(--map-active); stroke-width: 1; stroke-dasharray: 6 8; stroke-dashoffset: 100; animation: drawRelation 800ms ease forwards; }
+  @keyframes drawRelation { to { stroke-dashoffset: 0; } }
+  .graph-node circle { fill: var(--bg-primary); stroke: var(--map-line); stroke-width: 1; transition: stroke 300ms ease; }
+  .graph-node text { fill: var(--text-secondary); font-size: 12px; letter-spacing: 0.08em; transition: fill 300ms ease; }
+  .graph-node.selected circle { stroke: var(--accent-red); }
+  .graph-node.selected text { fill: var(--text-primary); }
+  .emergent-node { opacity: 0; transform: translateY(8px); animation: emergentIn 600ms ease forwards; }
+  .emergent-node circle { fill: var(--bg-primary); stroke: var(--accent-red); stroke-width: 1; }
+  .emergent-node.highlight circle { stroke: var(--text-primary); }
+  .emergent-node text { fill: var(--text-primary); font-size: 12px; letter-spacing: 0.08em; }
+  @keyframes emergentIn { to { opacity: 1; transform: translateY(0); } }
+  @keyframes lineIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .awakening-rule { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: rgba(8,10,15,0.9); font-size: 15px; line-height: 2.2; letter-spacing: 0.12em; color: var(--text-primary); white-space: pre-line; text-align: center; animation: intro-fade 300ms ease both; }
+  .combination-panel { padding: 24px; border-left: 1px solid var(--border); overflow-y: auto; z-index: 5; font-size: 13px; line-height: 1.8; }
+  .combination-hint { font-size: 13px; color: var(--text-muted); white-space: pre-line; margin: 0; }
+  .combination-selection-line { display: flex; align-items: center; padding: 4px 0; }
+  .combination-plus { color: var(--text-muted); margin: 0 8px; }
+  .combination-selection-name { font-size: 13px; color: var(--text-primary); letter-spacing: 0.08em; }
+  .combination-invalid-feedback { font-size: 12px; color: var(--text-muted); white-space: pre-line; line-height: 1.8; margin: 16px 0 0; }
+  .infer-button { position: relative; background: transparent; border: none; padding: 8px 0; font-family: inherit; font-size: 13px; letter-spacing: 0.18em; color: var(--text-secondary); cursor: pointer; margin-top: 24px; transition: color 300ms ease; }
+  .infer-button::after { content: ""; position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: 24px; height: 1px; background: var(--accent-red); transition: width 300ms ease; }
+  .infer-button:hover { color: var(--text-primary); }
+  .infer-button:hover::after { width: 100%; }
+  .infer-button:focus-visible { outline: 1px solid var(--accent-red); outline-offset: 6px; }
+  .combination-result-name { font-size: 24px; letter-spacing: 0.2em; color: var(--text-primary); margin-bottom: 16px; }
+  .combination-result-source { font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.8; }
+  .combination-result-source-label { color: var(--text-muted); }
+  .combination-result-desc { font-size: 13px; line-height: 1.9; color: var(--text-secondary); margin-bottom: 16px; }
+  .combination-result-nature { font-size: 12px; letter-spacing: 0.08em; color: var(--text-muted); }
+  .combination-result-nature span { color: var(--text-primary); }
+  .awakening-action-bar { border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 32px; z-index: 10; }
+  .awakening-action-status { font-size: 11px; letter-spacing: 0.12em; color: var(--text-secondary); }
+  @media (max-width: 768px) {
+    .awakening-page { height: auto; min-height: 100dvh; display: flex; flex-direction: column; overflow-y: auto; }
+    .awakening-main { display: flex; flex-direction: column; min-height: 0; }
+    .knowledge-panel { border-right: none; border-bottom: 1px solid var(--border); max-height: 260px; overflow-y: auto; }
+    .evolution-graph { height: 420px; flex-shrink: 0; }
+    .combination-panel { border-left: none; padding: 20px; }
+    .awakening-action-bar { position: sticky; bottom: 0; background: var(--bg-primary); height: 88px; }
+  }
+
+  /* ================= Mandate ================= */
+  .mandate-page { position: relative; width: 100vw; height: 100dvh; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--bg-primary); color: var(--text-primary); }
+  .mandate-main { width: 100%; height: 100%; overflow-y: auto; display: flex; align-items: center; justify-content: center; padding: 48px 24px; }
+  .mandate-choice { width: 100%; max-width: 720px; display: flex; flex-direction: column; align-items: center; gap: 80px; }
+  .mandate-choice-title { font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif; font-size: clamp(28px, 4vw, 52px); font-weight: 400; letter-spacing: 0.06em; line-height: 1.6; color: var(--text-primary); margin: 0; text-align: center; }
+  .decision-options { display: flex; flex-direction: column; align-items: center; gap: 44px; }
+  .decision-option { background: transparent; border: none; cursor: pointer; font-family: inherit; font-size: 20px; letter-spacing: 0.24em; color: var(--text-secondary); padding: 8px 6px; position: relative; transition: color 400ms ease; }
+  .decision-option::after { content: ""; position: absolute; left: 50%; bottom: 0; width: 0; height: 1px; background: var(--text-primary); transform: translateX(-50%); transition: width 400ms ease; }
+  .decision-option:hover:not(:disabled),
+  .decision-option.active { color: var(--text-primary); }
+  .decision-option:hover:not(:disabled)::after { width: 100%; }
+  .decision-option:disabled { cursor: default; opacity: 0.45; }
+  .decision-option:focus-visible { outline: 1px solid var(--accent-red); outline-offset: 6px; }
+  @media (max-width: 768px) {
+    .mandate-page { height: auto; min-height: 100dvh; overflow-y: auto; }
+    .mandate-main { padding: 40px 20px; }
+    .mandate-choice { gap: 56px; }
+    .decision-options { gap: 36px; }
+    .decision-option { font-size: 18px; }
+  }
+
+  /* ================= 标题字体：汉隶 ================= */
+  .game-title,
+  .era-label,
+  .panel-title,
+  .event-title,
+  .judgement-title,
+  .drought-result-title,
+  .combination-result-name,
+  .mandate-choice-title,
+  .observe-header-title,
+  .drought-header-title,
+  .drought-header-sub,
+  .borrow-header-title,
+  .borrow-header-sub,
+  .awakening-header-title,
+  .awakening-header-sub {
+    font-family: var(--font-title);
+    font-weight: 400;
+  }
+
+  /* 隶书字形宽扁，标题统一收窄字距、避免割裂 */
+  .panel-title { font-size: 14px; letter-spacing: 0.12em; }
+  .judgement-title { letter-spacing: 0.14em; }
+  .drought-result-title { letter-spacing: 0.14em; }
+  .combination-result-name { letter-spacing: 0.14em; }
+  .era-label { letter-spacing: 0.24em; }
+  .drought-header-sub,
+  .borrow-header-sub,
+  .awakening-header-sub { letter-spacing: 0.2em; }
+
+  /* ==================== 汉代视觉体系 ==================== */
+
+  /* 漆器 / 绢帛 材质噪点层 */
+  .han-bg {
+    position: fixed; inset: 0; z-index: 30; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    opacity: 0.05;
+  }
+
+  /* 暖化分隔线 —— 漆器铜褐 */
+  :root { --border-warm: rgba(180, 156, 116, 0.17); }
+
+  /* 云气纹 */
+  .han-cloud { position: absolute; left: 0; width: 100%; pointer-events: none; z-index: 1; }
+  .han-cloud path { fill: none; stroke: var(--han-bronze); stroke-width: 1; opacity: 0.15; }
+  .han-cloud-intro { top: 5%; height: 150px; animation: cloudDrift 22s ease-in-out infinite alternate; }
+  @keyframes cloudDrift { from { transform: translateX(-6px); } to { transform: translateX(6px); } }
+
+  /* 仙山 / 博山 剪影 */
+  .han-mountain { position: absolute; left: 0; bottom: 0; width: 100%; height: 27vh; pointer-events: none; z-index: 2; }
+  .han-mountain path { fill: rgba(20, 17, 13, 0.6); }
+  .han-mountain path + path { fill: rgba(13, 11, 9, 0.82); }
+
+  /* 铜镜星图框架 */
+  .bronze-frame { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(80%, 540px); height: auto; pointer-events: none; z-index: 4; }
+  .bronze-frame .bf-ring { fill: none; stroke: var(--han-bronze); stroke-width: 1; opacity: 0.42; }
+  .bronze-frame .bf-ring2 { fill: none; stroke: var(--han-bronze); stroke-width: 0.5; opacity: 0.26; }
+  .bronze-frame .bf-inner { fill: none; stroke: var(--han-jade); stroke-width: 0.5; opacity: 0.3; }
+  .bronze-frame .bf-tick { stroke: var(--han-bronze); stroke-width: 0.6; opacity: 0.4; }
+  .bronze-frame .bf-cardinal { stroke: var(--accent-red); stroke-width: 1; opacity: 0.5; }
+  .bronze-frame .bf-ticks { transform-box: view-box; transform-origin: 200px 200px; animation: frameRotate 90s linear infinite; }
+  .bronze-frame .bf-seal { font-family: var(--font-title); font-size: 11px; letter-spacing: 0.18em; fill: var(--text-secondary); opacity: 0.6; }
+  @keyframes frameRotate { to { transform: rotate(360deg); } }
+
+  /* 面板材质化 —— 暗漆褐 + 微弱赭色晕染 */
+  .judgement-modal { background: #120f0b; border: 1px solid var(--border-warm); }
+  .relation-mode { background: rgba(14, 12, 9, 0.92); border: 1px solid var(--border-warm); }
+  .observe-panel, .event-panel, .evidence-panel, .control-panel, .result-panel, .knowledge-panel, .combination-panel {
+    background-image: linear-gradient(180deg, rgba(140, 106, 58, 0.035), rgba(140, 106, 58, 0) 45%);
+  }
+
+  /* 题签式标题分隔线 */
+  .panel-title { position: relative; padding-bottom: 10px; }
+  .panel-title::after { content: ""; position: absolute; left: 0; bottom: 0; width: 26px; height: 1px; background: var(--accent-red); opacity: 0.55; }
+
+  /* 页头题签 */
+  .observe-header, .drought-header, .borrow-header, .awakening-header { border-bottom: 1px solid var(--border-warm); }
+
+  /* 旱灾地图 —— 画像石阴刻斜纹 */
+  .terrain-map::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+    background-image: repeating-linear-gradient(45deg, rgba(178, 156, 116, 0.035) 0 1px, transparent 1px 11px);
+  }
+
+  /* 觉醒 —— 瓦当圆 */
+  .evolution-graph::before {
+    content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 72%; aspect-ratio: 1; border-radius: 50%; pointer-events: none;
+    border: 1px solid var(--han-bronze); opacity: 0.16;
+  }
+
+  @media (max-width: 768px) {
+    .han-cloud-intro { height: 90px; }
+    .han-mountain { height: 15vh; }
+    .bronze-frame { width: min(92%, 340px); }
+  }
+
+  /* 第三页（旱灾）：隐藏原生滚动条，保留滚动能力 */
+  .event-panel,
+  .evidence-panel,
+  .page-drought { scrollbar-width: none; -ms-overflow-style: none; }
+  .event-panel::-webkit-scrollbar,
+  .evidence-panel::-webkit-scrollbar,
+  .page-drought::-webkit-scrollbar { display: none; }
+
+  /* 背景音乐控制按钮（极简，默认隐藏，加载到音频后再显示） */
+  .bgm-toggle {
+    display: none;
+    position: fixed; top: 12px; right: 16px; z-index: 40;
+    background: transparent; border: none; cursor: pointer;
+    font-family: var(--font-title); font-size: 15px; line-height: 1;
+    letter-spacing: 0.04em; color: var(--text-secondary);
+    padding: 4px 5px; margin: 0;
+    opacity: 0.72; transition: color 300ms ease, opacity 300ms ease;
+  }
+  .bgm-toggle:hover { color: var(--text-primary); opacity: 1; }
+  .bgm-toggle.muted { opacity: 0.3; }
+  .bgm-toggle:focus-visible { outline: 1px solid var(--accent-red); outline-offset: 4px; }
+
+  /* 为右上角音乐按钮让出空间（仅影响带页头的页面） */
+  .observe-header, .drought-header, .borrow-header, .awakening-header { padding-right: 60px; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+</head>
+<body>
+<div class="han-bg" aria-hidden="true"></div>
+<button type="button" id="bgmToggle" class="bgm-toggle" aria-label="背景音乐" title="背景音乐">音</button>
+
+  <!-- ============ Intro ============ -->
+  <section id="page-intro" class="intro-page">
+    <svg class="han-cloud han-cloud-intro" viewBox="0 0 1440 150" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M 980 62 C 1060 44 1140 66 1210 52 S 1330 40 1390 56" />
+      <path d="M 1180 54 c -30 -14 -48 -32 -42 -50 c 6 -18 36 -20 52 -8" />
+    </svg>
+    <svg class="han-mountain" viewBox="0 0 1440 260" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 260 L0 205 C 140 172 260 150 400 162 C 520 172 600 118 700 130 C 810 143 900 92 1010 122 C 1120 152 1240 142 1440 172 L1440 260 Z" />
+      <path d="M0 260 L0 228 C 170 206 300 196 450 208 C 590 219 700 196 820 208 C 950 221 1080 210 1220 218 C 1330 224 1400 220 1440 226 L1440 260 Z" />
+    </svg>
+    <canvas id="introCanvas" class="star-canvas" aria-hidden="true"></canvas>
+    <div class="star-map-overlay"><div id="introTooltip" class="star-tooltip" aria-hidden="true"></div></div>
+    <div class="narrative-container" id="introNarrative">
+      <div class="narrative-stage" id="introNarrativeStage"></div>
+    </div>
+    <div class="title-container" id="introTitle">
+      <h1 class="game-title">观天</h1>
+      <div class="era-label">西汉末年</div>
+      <button type="button" id="introBtn" class="start-button"><span>开始观天</span></button>
+    </div>
+    <button type="button" id="introSkipBtn" class="skip-button">跳过</button>
+  </section>
+
+  <!-- ============ Observe ============ -->
+  <section id="page-observe" class="observe-page" hidden>
+    <header class="observe-header">
+      <div class="header-left">
+        <button type="button" class="back-button" data-back="intro">返回</button>
+        <span class="observe-header-title">观天</span>
+      </div>
+      <span class="observe-header-count" id="headerCount">观测记录&nbsp;&nbsp;0 / 3</span>
+    </header>
+    <div class="observe-main">
+      <aside class="observe-panel observe-panel-left" id="observationPanel"></aside>
+      <div class="celestial-globe" id="celestialGlobe">
+        <div id="celestialTooltip" class="celestial-tooltip" data-visible="false" aria-hidden="true"></div>
+        <svg class="bronze-frame" viewBox="0 0 400 400" aria-hidden="true">
+          <circle class="bf-ring" cx="200" cy="200" r="195" />
+          <circle class="bf-ring2" cx="200" cy="200" r="185" />
+          <circle class="bf-inner" cx="200" cy="200" r="112" />
+          <g class="bf-ticks">
+            <line class="bf-tick" x1="200" y1="5" x2="200" y2="16" />
+            <line class="bf-tick" x1="200" y1="5" x2="200" y2="16" transform="rotate(30 200 200)" />
+            <line class="bf-tick" x1="200" y1="5" x2="200" y2="16" transform="rotate(60 200 200)" />
+            <line class="bf-tick" x1="200" y1="5" x2="200" y2="16" transform="rotate(90 200 200)" />
+            <line class="bf-tick" x1="200" y1="5" x2="200" y2="16" transform="rotate(120 200 200)" />
+            <line class="bf-tick" x1="200" y1="5" x2="200" y2="16" transform="rotate(150 200 200)" />
+            <line class="bf-tick" x1="200" y1="5" x2="200" y2="16" transform="rotate(180 200 200)" />
+            <line class="bf-tick" x1="200" y1="5" x2="200" y2="16" transform="rotate(210 200 200)" />
+            <line class="bf-tick" x1="200" y1="5" x2="200" y2="16" transform="rotate(240 200 200)" />
+            <line class="bf-tick" x1="200" y1="5" x2="200" y2="16" transform="rotate(270 200 200)" />
+            <line class="bf-tick" x1="200" y1="5" x2="200" y2="16" transform="rotate(300 200 200)" />
+            <line class="bf-tick" x1="200" y1="5" x2="200" y2="16" transform="rotate(330 200 200)" />
+          </g>
+          <line class="bf-cardinal" x1="200" y1="5" x2="200" y2="20" />
+          <line class="bf-cardinal" x1="200" y1="395" x2="200" y2="380" />
+          <line class="bf-cardinal" x1="5" y1="200" x2="20" y2="200" />
+          <line class="bf-cardinal" x1="395" y1="200" x2="380" y2="200" />
+          <text class="bf-seal" x="200" y="58" text-anchor="middle">朱雀</text>
+          <text class="bf-seal" x="200" y="354" text-anchor="middle">玄武</text>
+          <text class="bf-seal" x="56" y="206" text-anchor="middle">青龙</text>
+          <text class="bf-seal" x="344" y="206" text-anchor="middle">白虎</text>
+        </svg>
+      </div>
+      <aside class="observe-panel observe-panel-right" id="recordPanel"></aside>
+    </div>
+    <div class="time-control">
+      <div class="time-control-head">
+        <span class="time-control-title">观测时间</span>
+        <span class="time-control-date">三月十五</span>
+      </div>
+      <input type="range" id="timeRange" class="time-control-range" min="0" max="4" step="1" value="2" />
+      <div class="time-control-ticks" id="timeTicks"></div>
+    </div>
+    <div class="observe-action">
+      <button type="button" id="actionBtn" class="action-button" disabled>继续观测</button>
+    </div>
+  </section>
+
+  <!-- ============ Drought ============ -->
+  <section id="page-drought" class="page-drought" hidden>
+    <header class="drought-header">
+      <div class="header-left">
+        <button type="button" class="back-button" data-back="observe">返回</button>
+        <span class="drought-header-title">观天</span>
+      </div>
+      <span class="drought-header-sub">识理</span>
+      <span class="drought-header-progress" id="dHeaderProgress">观测 0 / 5</span>
+    </header>
+    <div class="drought-main">
+      <aside class="event-panel" id="eventPanel"></aside>
+      <div class="terrain-map" id="envMap">
+        <svg class="terrain-map-svg" id="dMapSvg" viewBox="0 0 1000 700" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <canvas class="wind-field-canvas" id="dWindCanvas" aria-hidden="true"></canvas>
+        <svg class="terrain-map-lines" id="envMapLines" viewBox="0 0 1000 700" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <div class="relation-mode" id="relationMode" hidden></div>
+      </div>
+      <aside class="evidence-panel" id="evidencePanel"></aside>
+    </div>
+    <div class="reasoning-panel" id="reasoningPanel"></div>
+    <div class="investigation-control">
+      <div class="ic-status">
+        <span class="ic-status-line" id="icEvidence">已获得证据：0 / 5</span>
+        <span class="ic-status-line" id="icRelations">已建立关系：0</span>
+      </div>
+      <div class="ic-actions">
+        <button type="button" class="ic-btn" id="relBtn" disabled>建立关系</button>
+        <button type="button" class="ic-btn" id="judgeBtn" disabled>继续观测</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Borrow ============ -->
+  <section id="page-borrow" class="borrow-page" hidden>
+    <header class="borrow-header">
+      <div class="header-left">
+        <button type="button" class="back-button" data-back="drought">返回</button>
+        <span class="borrow-header-title">观天</span>
+      </div>
+      <span class="borrow-header-sub">借势</span>
+      <span class="borrow-header-status">识理 · 已掌握</span>
+    </header>
+    <div class="borrow-main">
+      <aside class="control-panel" id="borrowControlPanel"></aside>
+      <div class="simulation-map">
+        <svg class="sim-map-svg" viewBox="0 0 1000 700" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <marker id="borrow-wind-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--map-line)" />
+            </marker>
+          </defs>
+          <path class="borrow-mountain" d="M 120 150 L 210 78 L 300 148 L 400 62 L 500 140 L 610 70 L 710 148 L 820 84 L 900 140" />
+          <path class="borrow-river" d="M 60 620 C 240 595 360 645 520 620 S 780 600 940 622" />
+          <g class="borrow-village"><rect x="470" y="380" width="60" height="40" /><line x1="500" y1="380" x2="500" y2="340" /></g>
+          <g class="borrow-field" id="borrowField">
+            <rect x="380" y="430" width="240" height="150" />
+            <line x1="380" y1="480" x2="620" y2="480" />
+            <line x1="380" y1="530" x2="620" y2="530" />
+            <line x1="460" y1="430" x2="460" y2="580" />
+            <line x1="540" y1="430" x2="540" y2="580" />
+          </g>
+          <g class="borrow-moisture-layer" id="borrowMoisture">
+            <path class="moisture-flow" d="M 780 470 C 680 430 600 390 520 310" />
+            <path class="moisture-flow" d="M 820 520 C 720 480 640 440 560 360" />
+            <path class="moisture-flow" d="M 760 430 C 660 390 580 350 500 270" />
+          </g>
+          <g class="borrow-cloud-layer" id="borrowCloud">
+            <path class="borrow-cloud" d="M 320 250 a 40 22 0 0 1 78 0 a 36 20 0 0 1 20 32 a 38 22 0 0 1 -30 34 a 34 16 0 0 1 -68 -6 a 30 18 0 0 1 -34 -26 a 36 20 0 0 1 34 -34 z" />
+            <path class="borrow-cloud" d="M 460 280 a 30 16 0 0 1 56 0 a 28 15 0 0 1 16 24 a 28 16 0 0 1 -22 24 a 26 12 0 0 1 -48 -4 a 24 14 0 0 1 -26 -20 a 26 14 0 0 1 24 -24 z" />
+          </g>
+          <g class="borrow-wind-layer" id="borrowWind">
+            <line x1="820" y1="410" x2="640" y2="320" class="borrow-wind-line" marker-end="url(#borrow-wind-arrow)" />
+            <line x1="800" y1="460" x2="620" y2="370" class="borrow-wind-line" marker-end="url(#borrow-wind-arrow)" />
+            <line x1="770" y1="510" x2="590" y2="420" class="borrow-wind-line" marker-end="url(#borrow-wind-arrow)" />
+          </g>
+          <g class="borrow-rain-layer" id="borrowRain" hidden></g>
+          <text class="map-north" x="500" y="38" text-anchor="middle">北 ↑</text>
+        </svg>
+      </div>
+      <aside class="result-panel" id="borrowResultPanel"></aside>
+    </div>
+    <div class="borrow-action-bar">
+      <span class="borrow-action-mode" id="borrowActionMode">当前干预：顺势</span>
+      <button type="button" class="ic-btn" id="borrowActionBtn">确认借势 →</button>
+    </div>
+  </section>
+
+  <!-- ============ Awakening ============ -->
+  <section id="page-awakening" class="awakening-page" hidden>
+    <header class="awakening-header">
+      <div class="header-left">
+        <button type="button" class="back-button" data-back="borrow">返回</button>
+        <span class="awakening-header-title">观天</span>
+      </div>
+      <span class="awakening-header-sub">天演</span>
+      <span class="awakening-header-status" id="awakeHeaderCount">知识：6</span>
+    </header>
+    <div class="awakening-main">
+      <aside class="knowledge-panel" id="awakeKnowledgePanel"></aside>
+      <div class="evolution-graph">
+        <svg id="awakeGraphSvg" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
+      </div>
+      <aside class="combination-panel" id="awakeComboPanel"></aside>
+    </div>
+    <div class="awakening-action-bar">
+      <span class="awakening-action-status" id="awakeActionStatus">已发现关系：0</span>
+      <button type="button" class="ic-btn" id="awakeContinueBtn">继续 →</button>
+    </div>
+  </section>
+
+  <!-- ============ Mandate ============ -->
+  <section id="page-mandate" class="mandate-page" hidden>
+    <div class="mandate-main">
+      <div class="mandate-choice">
+        <h1 class="mandate-choice-title">面对观星术，你该如何抉择？</h1>
+        <div class="decision-options" id="mandateOptions"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Ending ============ -->
+  <section id="page-ending" class="placeholder-page" hidden>观天 · 结局（待续）</section>
+
+  <div id="mandateLocked" class="placeholder-page" hidden>你尚未完成天演。</div>
+
+  <div id="awakeLocked" class="placeholder-page" hidden>你尚未完成借势。</div>
+  <div id="awakeRule" class="awakening-rule" hidden>天演
+
+不是创造规律。
+
+而是发现规律之间
+尚未被认识的关系。</div>
+
+  <div id="borrowResultOverlay" class="borrow-result" hidden></div>
+  <div id="borrowLocked" class="placeholder-page" hidden>你尚未理解借势。</div>
+
+  <!-- ============ Modal / feedback / transition ============ -->
+  <div id="judgementModal" class="modal-backdrop" hidden>
+    <div class="judgement-modal" role="dialog" aria-modal="true" aria-label="判断天象">
+      <h2 class="judgement-title">你认为发生了什么？</h2>
+      <div class="judgement-options" id="judgementOptions"></div>
+    </div>
+  </div>
+  <div id="feedback" class="judgement-feedback" hidden>你记录下了自己的判断。</div>
+  <div id="droughtModal" class="modal-backdrop" hidden>
+    <div class="judgement-modal drought-modal" role="dialog" aria-modal="true" aria-label="识理">
+      <h2 class="judgement-title">识理</h2>
+      <p class="judgement-subtitle">根据已有观测，判断此次旱灾的原因。</p>
+      <div class="judgement-options" id="dJudgementOptions"></div>
+    </div>
+  </div>
+  <div id="droughtResult" class="drought-result" hidden></div>
+  <div id="transition" class="transition-overlay"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ============ 数据 ============ */
+  var TIME_STATES = ['戌时', '亥时', '子时', '丑时', '寅时'];
+  /* 二十八宿与恒星 */
+  var MANSION_SEQ = [["角",2],["亢",4],["氐",4],["房",4],["心",3],["尾",6],["箕",4],["斗",5],["牛",4],["女",3],["虚",2],["危",3],["室",2],["壁",2],["奎",10],["娄",3],["胃",3],["昴",6],["毕",6],["觜",3],["参",6],["井",6],["鬼",3],["柳",6],["星",5],["张",5],["翼",12],["轸",4]];
+  var MANSIONS = [];
+  var MANSION_BY_ID = {};
+  function DIRECTION_OF(i) { return i < 7 ? '东方青龙' : (i < 14 ? '北方玄武' : (i < 21 ? '西方白虎' : '南方朱雀')); }
+  var CHINESE_NUM = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一'];
+  for (var _mi = 0; _mi < MANSION_SEQ.length; _mi++) {
+    var _id = MANSION_SEQ[_mi][0], _sc = MANSION_SEQ[_mi][1];
+    var _ra = _mi * 360 / 28, _dec = 16 * Math.sin(_mi * 1.6);
+    var _stars = [_id];
+    for (var _si = 1; _si < _sc; _si++) _stars.push(_id + '-' + _si);
+    var _m = { id: _id, name: _id, fullName: _id + '宿', direction: DIRECTION_OF(_mi), ra: _ra, dec: _dec, starCount: _sc, stars: _stars };
+    MANSIONS.push(_m); MANSION_BY_ID[_id] = _m;
+  }
+  function mulberry32(seed) { var a = seed; return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  var _rand = mulberry32(20260910);
+  var STARS = [];
+  var STAR_BY_ID = {};
+  for (var _mi2 = 0; _mi2 < MANSIONS.length; _mi2++) {
+    var _mm = MANSIONS[_mi2];
+    STARS.push({ id: _mm.id, name: _mm.fullName, ra: _mm.ra + (_rand() - 0.5) * 1.4, dec: _mm.dec + (_rand() - 0.5) * 1.4, mag: 0.9 + _rand() * 0.9, mansion: _mm.id, interactive: true });
+    for (var _s2 = 1; _s2 < _mm.starCount; _s2++) {
+      STARS.push({ id: _mm.id + '-' + _s2, name: _mm.fullName + (CHINESE_NUM[_s2 - 1] || ''), ra: _mm.ra + (_rand() - 0.5) * 7, dec: _mm.dec + (_rand() - 0.5) * 7, mag: 2.6 + _rand() * 1.8, mansion: _mm.id, interactive: false });
+    }
+  }
+  for (var _ai = 0; _ai < 250; _ai++) {
+    var _u = _rand() * 2 - 1, _th = _rand() * Math.PI * 2;
+    STARS.push({ id: 'aux-' + _ai, name: '', ra: _th * 180 / Math.PI, dec: Math.asin(_u) * 180 / Math.PI, mag: 3.6 + _rand() * 2.4, interactive: false });
+  }
+  for (var _bi = 0; _bi < STARS.length; _bi++) STAR_BY_ID[STARS[_bi].id] = STARS[_bi];
+
+  var DEG = Math.PI / 180;
+  function raDecToVec(raDeg, decDeg, radius) {
+    radius = radius || 10;
+    var ra = raDeg * DEG, dec = decDeg * DEG;
+    return { x: radius * Math.cos(dec) * Math.cos(ra), y: radius * Math.sin(dec), z: radius * Math.cos(dec) * Math.sin(ra) };
+  }
+  var GLOBAL_RA_DRIFT = { '戌时': -2.4, '亥时': -1.2, '子时': 0, '丑时': 1.2, '寅时': 2.4 };
+  var XIN_ANOMALY = { '戌时': [0, 0], '亥时': [0.18, 0.1], '子时': [0.42, 0.22], '丑时': [0.74, 0.42], '寅时': [1.08, 0.6] };
+  function globalDriftAngle(time) { return GLOBAL_RA_DRIFT[time] * DEG; }
+  function xinAnomalyOffset(time) { return XIN_ANOMALY[time]; }
+  var SKY = {
+    '戌时': ['晴', '低', '东南'], '亥时': ['晴', '低', '东南'], '子时': ['晴', '低', '东南'],
+    '丑时': ['晴', '低', '东南'], '寅时': ['薄云', '中', '东南']
+  };
+  var MANSION_NOTES = { '心': '位置与旧图存在差异。', '角': '位置基本稳定。' };
+  function mansionNote(id) { return MANSION_NOTES[id] || '未见明显异常。'; }
+  var JUDGEMENT_OPTIONS = [
+    { value: 'observation_error', label: '天象正常，只是观测误差' },
+    { value: 'celestial_anomaly', label: '星宿位置发生异常' },
+    { value: 'mandate_change', label: '这是天命变化的征兆' }
+  ];
+  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+  function starRadius(mag) { return clamp(2.4 - mag * 0.35, 0.7, 2.4); }
+  function starOpacity(mag) { return clamp(0.95 - mag * 0.1, 0.4, 0.9); }
+
+  /* ============ 页面切换 ============ */
+  var intro = document.getElementById('page-intro');
+  var observe = document.getElementById('page-observe');
+  var drought = document.getElementById('page-drought');
+  var borrow = document.getElementById('page-borrow');
+  var awakening = document.getElementById('page-awakening');
+  var mandate = document.getElementById('page-mandate');
+  var ending = document.getElementById('page-ending');
+  var transitionEl = document.getElementById('transition');
+
+  function goTo(page, after) {
+    transitionEl.classList.add('active');
+    setTimeout(function () {
+      intro.hidden = true;
+      observe.hidden = true;
+      drought.hidden = true;
+      borrow.hidden = true;
+      awakening.hidden = true;
+      mandate.hidden = true;
+      ending.hidden = true;
+      if (page === 'observe') { observe.hidden = false; }
+      else if (page === 'drought') { drought.hidden = false; }
+      else if (page === 'borrow') { borrow.hidden = false; startBorrow(); }
+      else if (page === 'awakening') { awakening.hidden = false; startAwakening(); }
+      else if (page === 'mandate') { mandate.hidden = false; startMandate(); }
+      else if (page === 'ending') { ending.hidden = false; }
+      else if (page === 'intro') { intro.hidden = false; }
+      transitionEl.classList.remove('active');
+      if (after) after();
+    }, 900);
+  }
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('.back-button');
+    if (!b) return;
+    var page = b.getAttribute('data-back');
+    if (page) goTo(page);
+  });
+
+  /* ============ Intro 星图 ============ */
+  var introAnomalyActive = false;
+  var introAnomalyStrength = 0;
+  (function initIntro() {
+    var canvas = document.getElementById('introCanvas');
+    var tooltip = document.getElementById('introTooltip');
+    var ctx = canvas.getContext('2d');
+    var names = ['角宿', '心宿', '参宿', '斗宿', '昴宿'];
+    var stars = [], groups = [];
+    var viewport = { w: 0, h: 0, dpr: 1, mobile: false };
+    var mouse = { nx: 0, ny: 0 };
+    var hoveredId = null, rafId = 0, running = true;
+
+    function genStars(w, h) {
+      var count = w >= 1024 ? 120 : (w >= 640 ? 80 : 50);
+      var list = [];
+      for (var i = 0; i < count; i++) {
+        var interactive = i < 8;
+        var speed = 0.002 + Math.random() * 0.006;
+        var ang = Math.random() * Math.PI * 2;
+        list.push({
+          id: i, x: Math.random() * w, y: Math.random() * h,
+          radius: interactive ? 1.5 + Math.random() : 0.5 + Math.random() * 1.3,
+          opacity: interactive ? 0.65 + Math.random() * 0.25 : 0.2 + Math.random() * 0.45,
+          depth: 0.1 + Math.random() * 0.9,
+          vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed,
+          interactive: interactive, name: interactive ? names[i % names.length] : null
+        });
+      }
+      return list;
+    }
+    function genGroups(w, h) {
+      var list = [];
+      for (var g = 0; g < 4; g++) {
+        var cx = w * (0.12 + Math.random() * 0.76), cy = h * (0.1 + Math.random() * 0.75);
+        var pts = [], n = 4 + Math.floor(Math.random() * 3);
+        for (var i = 0; i < n; i++) {
+          var a = Math.random() * Math.PI * 2, r = 30 + Math.random() * 100;
+          pts.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
+        }
+        list.push(pts);
+      }
+      return list;
+    }
+    function resize() {
+      var w = window.innerWidth, h = window.innerHeight;
+      viewport.w = w; viewport.h = h; viewport.dpr = window.devicePixelRatio || 1; viewport.mobile = w < 640;
+      canvas.width = Math.floor(w * viewport.dpr); canvas.height = Math.floor(h * viewport.dpr);
+      stars = genStars(w, h); groups = genGroups(w, h);
+    }
+    function draw() {
+      var dpr = viewport.dpr;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      introAnomalyStrength += ((introAnomalyActive ? 1 : 0) - introAnomalyStrength) * 0.035;
+      var w = viewport.w, h = viewport.h;
+      var normalA = viewport.mobile ? 0.06 * 0.7 : 0.06;
+      var titleA = viewport.mobile ? 0.025 * 0.7 : 0.025;
+      var tx0 = w * 0.16, ty0 = h * 0.26, tw = w * 0.68, th = h * 0.38;
+      ctx.lineWidth = 0.5;
+      function stroke(fn) {
+        ctx.strokeStyle = 'rgba(232,226,210,' + titleA + ')';
+        ctx.beginPath(); fn(); ctx.stroke();
+        ctx.save();
+        ctx.beginPath(); ctx.rect(0, 0, w, h); ctx.rect(tx0, ty0, tw, th); ctx.clip('evenodd');
+        ctx.strokeStyle = 'rgba(232,226,210,' + normalA + ')';
+        ctx.beginPath(); fn(); ctx.stroke();
+        ctx.restore();
+      }
+      stroke(function () { ctx.moveTo(0, h * 0.58); ctx.quadraticCurveTo(w * 0.5, h * 0.66, w, h * 0.58); });
+      stroke(function () { ctx.moveTo(0, h * 0.5); ctx.quadraticCurveTo(w * 0.5, h * 0.46, w, h * 0.5); });
+      for (var gi = 0; gi < groups.length; gi++) {
+        (function (g) {
+          stroke(function () { ctx.moveTo(g[0].x, g[0].y); for (var k = 1; k < g.length; k++) ctx.lineTo(g[k].x, g[k].y); });
+        })(groups[gi]);
+      }
+      function drawStar(x, y, r, o) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(232,226,210,' + o + ')'; ctx.fill(); }
+      for (var i = 0; i < stars.length; i++) {
+        var s = stars[i];
+        s.x += s.vx; s.y += s.vy;
+        if (s.x < -2) s.x = w + 2; else if (s.x > w + 2) s.x = -2;
+        if (s.y < -2) s.y = h + 2; else if (s.y > h + 2) s.y = -2;
+        var offX = viewport.mobile ? 0 : mouse.nx * s.depth * 8;
+        var offY = viewport.mobile ? 0 : mouse.ny * s.depth * 8;
+        if (s.id === 0) { offX += 8 * introAnomalyStrength; offY += -6 * introAnomalyStrength; }
+        var r = s.radius, o = s.opacity;
+        if (s.id === hoveredId) { r *= 1.4; o += 0.15; }
+        drawStar(s.x + offX, s.y + offY, r, Math.min(o, 1));
+      }
+      if (hoveredId != null) {
+        for (var j = 0; j < stars.length; j++) {
+          if (stars[j].id === hoveredId) {
+            var hs = stars[j];
+            tooltip.style.left = (hs.x + (viewport.mobile ? 0 : mouse.nx * hs.depth * 8)) + 'px';
+            tooltip.style.top = (hs.y + (viewport.mobile ? 0 : mouse.ny * hs.depth * 8)) + 'px';
+            break;
+          }
+        }
+      }
+    }
+    function onMouseMove(e) {
+      mouse.nx = (e.clientX / viewport.w) * 2 - 1;
+      mouse.ny = (e.clientY / viewport.h) * 2 - 1;
+      var bestId = null, bestD = Infinity;
+      for (var i = 0; i < stars.length; i++) {
+        var s = stars[i]; if (!s.interactive) continue;
+        var offX = viewport.mobile ? 0 : mouse.nx * s.depth * 8;
+        var offY = viewport.mobile ? 0 : mouse.ny * s.depth * 8;
+        var d = Math.hypot(s.x + offX - e.clientX, s.y + offY - e.clientY);
+        if (d < bestD) { bestD = d; bestId = s.id; }
+      }
+      var hov = bestD < 24 ? bestId : null;
+      if (hov !== hoveredId) {
+        hoveredId = hov;
+        tooltip.textContent = hov != null ? stars[hov].name : '';
+        tooltip.setAttribute('data-visible', hov != null ? 'true' : 'false');
+      }
+    }
+    function loop() {
+      if (!running) return;
+      draw();
+      rafId = requestAnimationFrame(loop);
+    }
+    var resizeRaf = 0;
+    function onResize() { cancelAnimationFrame(resizeRaf); resizeRaf = requestAnimationFrame(resize); }
+    resize();
+    rafId = requestAnimationFrame(loop);
+    window.addEventListener('resize', onResize);
+    window.addEventListener('mousemove', onMouseMove);
+
+    document.getElementById('introBtn').addEventListener('click', function () {
+      running = false;
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('mousemove', onMouseMove);
+      goTo('observe', startObserve);
+    });
+  })();
+
+  /* ============ Intro 叙事 ============ */
+  var INTRO_NARRATIVE = [
+    { id: 'era', primary: ['地皇八年', '天下渐乱'], secondary: [] },
+    { id: 'observation', primary: ['古人观天', '以知四时'], secondary: ['在这个世界，观天也是理解自然规律的方法'] },
+    { id: 'anomaly', primary: ['今夜星象有异'], secondary: ['旧图所载，与眼前所见似有不同'] },
+    { id: 'question', primary: ['天变乎', '人误乎'], secondary: ['是天地真的改变了，还是我们从未真正看懂天地'] },
+    { id: 'action', primary: ['观天者，当先观天'], secondary: [] }
+  ];
+  var introNarrativeState = { stageIndex: 0, lineIndex: 0, done: false, finished: false };
+  var introNarrativeTimers = [];
+
+  function introNarrativeClear() {
+    for (var i = 0; i < introNarrativeTimers.length; i++) clearTimeout(introNarrativeTimers[i]);
+    introNarrativeTimers = [];
+  }
+  function introNarrativeSchedule(fn, ms) {
+    var id = setTimeout(function () {
+      introNarrativeTimers = introNarrativeTimers.filter(function (t) { return t !== id; });
+      fn();
+    }, ms);
+    introNarrativeTimers.push(id);
+  }
+  function introNarrativeRender() {
+    if (introNarrativeState.finished) return;
+    var stage = INTRO_NARRATIVE[introNarrativeState.stageIndex];
+    var lines = stage.primary.concat(stage.secondary);
+    var html = '';
+    var last = Math.min(introNarrativeState.lineIndex, lines.length - 1);
+    for (var i = 0; i <= last; i++) {
+      var kind = i < stage.primary.length ? 'primary' : 'secondary';
+      html += '<div class="narrative-line narrative-' + kind + (i === last ? ' narrative-current' : '') + '">' + lines[i] + '</div>';
+    }
+    document.getElementById('introNarrativeStage').innerHTML = html;
+    introAnomalyActive = (stage.id === 'anomaly');
+  }
+  function introNarrativeFinish() {
+    if (introNarrativeState.finished) return;
+    introNarrativeState.finished = true;
+    introNarrativeState.done = true;
+    introNarrativeClear();
+    introAnomalyActive = false;
+    var narrative = document.getElementById('introNarrative');
+    narrative.classList.remove('leaving');
+    narrative.style.display = 'none';
+    document.getElementById('introSkipBtn').style.display = 'none';
+    document.getElementById('introTitle').classList.add('revealed');
+  }
+  function introNarrativeSkip() {
+    introNarrativeClear();
+    introNarrativeFinish();
+  }
+  function introNarrativeAdvance() {
+    if (introNarrativeState.finished) return;
+    var stage = INTRO_NARRATIVE[introNarrativeState.stageIndex];
+    var total = stage.primary.length + stage.secondary.length;
+    var isLastLine = introNarrativeState.lineIndex >= total - 1;
+    var isLastStage = introNarrativeState.stageIndex >= INTRO_NARRATIVE.length - 1;
+    var isSecondary = introNarrativeState.lineIndex >= stage.primary.length;
+    var dur = isSecondary ? 2200 : 1700;
+    introNarrativeSchedule(function () {
+      if (introNarrativeState.finished) return;
+      if (!isLastLine) {
+        introNarrativeState.lineIndex++;
+        introNarrativeRender();
+        introNarrativeAdvance();
+      } else if (!isLastStage) {
+        document.getElementById('introNarrative').classList.add('leaving');
+        introNarrativeSchedule(function () {
+          if (introNarrativeState.finished) return;
+          introNarrativeState.stageIndex++;
+          introNarrativeState.lineIndex = 0;
+          document.getElementById('introNarrative').classList.remove('leaving');
+          introNarrativeRender();
+          introNarrativeAdvance();
+        }, 550);
+      } else {
+        document.getElementById('introNarrative').classList.add('leaving');
+        introNarrativeSchedule(introNarrativeFinish, 550);
+      }
+    }, dur);
+  }
+  function introNarrativeStart() {
+    introNarrativeRender();
+    introNarrativeAdvance();
+    document.getElementById('introSkipBtn').addEventListener('click', introNarrativeSkip);
+  }
+  introNarrativeStart();
+
+  /* ============ Observe 页面 ============ */
+  var observeState = { time: '子时', selectedId: null, records: [] };
+  var observeStarted = false;
+
+  function renderHeader() {
+    document.getElementById('headerCount').innerHTML = '观测记录&nbsp;&nbsp;' + observeState.records.length + ' / 3';
+  }
+  function renderObservation() {
+    var time = observeState.time;
+    var sky = SKY[time];
+    var html = '';
+    html += '<section class="obs-section"><h2 class="panel-title">观测</h2><dl>';
+    html += '<div class="obs-row"><dt>地点</dt><dd>长安</dd></div>';
+    html += '<div class="obs-row"><dt>日期</dt><dd>地皇八年 · 三月十五</dd></div>';
+    html += '<div class="obs-row"><dt>时刻</dt><dd class="mono">' + time + '</dd></div>';
+    html += '</dl></section>';
+    html += '<section class="obs-section"><h2 class="panel-title">观测状态</h2><dl>';
+    html += '<div class="obs-row"><dt>天空</dt><dd>' + sky[0] + '</dd></div>';
+    html += '<div class="obs-row"><dt>云量</dt><dd>' + sky[1] + '</dd></div>';
+    html += '<div class="obs-row"><dt>风向</dt><dd>' + sky[2] + '</dd></div>';
+    html += '</dl></section>';
+    document.getElementById('observationPanel').innerHTML = html;
+  }
+  function renderRecords() {
+    var el = document.getElementById('recordPanel');
+    var html = '<section class="obs-section"><h2 class="panel-title">星宿信息</h2>';
+    var mid = observeState.selectedId;
+    if (mid && MANSION_BY_ID[mid]) {
+      var m = MANSION_BY_ID[mid];
+      html += '<div class="mansion-name">' + m.fullName + '</div>';
+      html += '<div class="mansion-direction">' + m.direction + '</div>';
+      html += '<div class="mansion-divider"></div>';
+      html += '<h3 class="mansion-sub-label">主要恒星</h3><div class="mansion-stars">';
+      for (var si = 0; si < STARS.length; si++) {
+        if (STARS[si].mansion === mid) {
+          html += '<span class="mansion-star' + (STARS[si].id === mid ? ' primary' : '') + '">' + STARS[si].name + '</span>';
+        }
+      }
+      html += '</div><div class="mansion-divider"></div>';
+      html += '<h3 class="mansion-sub-label">观测状态</h3>';
+      var anomaly = mid === '心' && (observeState.time === '丑时' || observeState.time === '寅时');
+      html += '<div class="mansion-status' + (anomaly ? ' anomaly' : '') + '">' + (anomaly ? '位置异常' : '正常') + '</div>';
+      html += '<div class="mansion-note">' + mansionNote(mid) + '</div>';
+    } else {
+      html += '<div class="record-empty">尚未选择星宿</div>';
+    }
+    html += '</section>';
+    html += '<section class="obs-section"><h2 class="panel-title">观测记录</h2>';
+    if (observeState.records.length === 0) {
+      html += '<div class="record-empty">尚无记录</div>';
+    } else {
+      html += '<ul class="record-list">';
+      for (var i = 0; i < observeState.records.length; i++) {
+        var r = observeState.records[i];
+        var rm = MANSION_BY_ID[r.mansionId];
+        var ridx = -1;
+        for (var mii = 0; mii < MANSIONS.length; mii++) if (MANSIONS[mii].id === r.mansionId) { ridx = mii + 1; break; }
+        html += '<li class="record-item">';
+        html += '<div class="record-head"><span class="record-index mono">' + r.id + '</span><span class="record-time mono">' + r.time + '</span></div>';
+        html += '<div class="record-title">' + r.mansionName + '</div>';
+        html += '<div class="record-content">' + (rm ? rm.direction + ' · 第' + ridx + '宿' : r.mansionId) + (r.discoveredAnomaly ? ' · 异常' : '') + '</div>';
+        html += '</li>';
+      }
+      html += '</ul>';
+    }
+    html += '</section>';
+    el.innerHTML = html;
+  }
+  function renderAction() {
+    var btn = document.getElementById('actionBtn');
+    var can = observeState.records.length >= 3;
+    btn.disabled = !can;
+    btn.textContent = can ? '判断天象' : '继续观测';
+  }
+  function renderTicks() {
+    var el = document.getElementById('timeTicks');
+    var html = '';
+    for (var i = 0; i < TIME_STATES.length; i++) {
+      var t = TIME_STATES[i];
+      html += '<span class="time-control-tick' + (t === observeState.time ? ' active' : '') + '">' + t + '</span>';
+    }
+    el.innerHTML = html;
+  }
+  function observeMansion(mansionId, starId) {
+    var mansion = MANSION_BY_ID[mansionId];
+    if (!mansion) return;
+    observeState.selectedId = mansionId;
+    for (var i = 0; i < observeState.records.length; i++) {
+      if (observeState.records[i].mansionId === mansionId) return;
+    }
+    if (observeState.records.length >= 3) return;
+    observeState.records.push({
+      id: String(observeState.records.length + 1).padStart(2, '0'),
+      mansionId: mansionId,
+      mansionName: mansion.fullName,
+      starId: starId || undefined,
+      time: observeState.time,
+      discoveredAnomaly: mansionId === '心'
+    });
+  }
+  function renderAll() {
+    renderHeader(); renderObservation(); renderRecords(); renderAction(); renderTicks();
+    var range = document.getElementById('timeRange');
+    range.style.setProperty('--progress', (TIME_STATES.indexOf(observeState.time) / 4 * 100) + '%');
+  }
+
+  function startObserve() {
+    if (observeStarted) return;
+    observeStarted = true;
+    renderAll();
+    initCelestialGlobe();
+    initTimeControl();
+    initJudgement();
+    document.getElementById('actionBtn').addEventListener('click', function () {
+      if (observeState.records.length >= 3) {
+        document.getElementById('judgementModal').hidden = false;
+      }
+    });
+  }
+
+  function initTimeControl() {
+    var range = document.getElementById('timeRange');
+    range.addEventListener('input', function () {
+      observeState.time = TIME_STATES[Number(range.value)];
+      renderAll();
+      setObserveTime(observeState.time);
+    });
+  }
+
+  function initJudgement() {
+    var opts = document.getElementById('judgementOptions');
+    var html = '';
+    for (var i = 0; i < JUDGEMENT_OPTIONS.length; i++) {
+      html += '<button type="button" class="judgement-option" data-value="' + JUDGEMENT_OPTIONS[i].value + '">' + JUDGEMENT_OPTIONS[i].label + '</button>';
+    }
+    opts.innerHTML = html;
+    opts.addEventListener('click', function (e) {
+      var btn = e.target.closest('.judgement-option');
+      if (!btn) return;
+      sessionStorage.setItem('guantian_judgement', btn.getAttribute('data-value'));
+      document.getElementById('judgementModal').hidden = true;
+      document.getElementById('feedback').hidden = false;
+      setTimeout(function () {
+        document.getElementById('feedback').hidden = true;
+        goTo('drought', startDrought);
+      }, 1500);
+    });
+  }
+
+  /* ============ Observe 天球 Three.js ============ */
+  var globe = {
+    container: null, renderer: null, scene: null, camera: null,
+    sphereGroup: null, starGroup: null, gridGroup: null, starPoints: null,
+    starGeometry: null, starMaterial: null, starPositions: null, starHighlights: null,
+    mansionLines: {}, gridMat: null, eclipticMat: null, raycaster: null,
+    xinIndex: -1, xinRa: 0, xinDec: 0, xinCurrent: { x: 0, y: 0, z: 0 },
+    dragTarget: { y: 0, x: 0 }, hovered: '', time: '子时', hitMeshes: [],
+    lastMoveTime: 0, rafId: 0, running: false, started: false, ro: null,
+    dragging: false, moved: false, pointer: { x: 0, y: 0, downX: 0, downY: 0 }, ndc: { x: 0, y: 0 }
+  };
+
+  function sizeForMag(mag) { return Math.min(0.42, Math.max(0.16, 0.42 - mag * 0.045)); }
+  function alphaForMag(mag) { return Math.min(0.92, Math.max(0.22, 0.95 - mag * 0.09)); }
+  function smoothstep(e0, e1, x) { var t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); }
+  function lineGeoFromArr(arr) { var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3)); return g; }
+  function vecsToLinePositions(pts) {
+    var arr = new Float32Array((pts.length - 1) * 6);
+    for (var i = 0; i < pts.length - 1; i++) {
+      var a = pts[i], b = pts[i + 1];
+      arr[i * 6] = a.x; arr[i * 6 + 1] = a.y; arr[i * 6 + 2] = a.z;
+      arr[i * 6 + 3] = b.x; arr[i * 6 + 4] = b.y; arr[i * 6 + 5] = b.z;
+    }
+    return arr;
+  }
+  function equatorPoints(seg) { seg = seg || 200; var pts = []; for (var i = 0; i <= seg; i++) pts.push(raDecToVec(i / seg * 360, 0)); return pts; }
+  function eclipticPoints(seg) { seg = seg || 200; var pts = []; var t = 23.44 * DEG; for (var i = 0; i <= seg; i++) { var v = raDecToVec(i / seg * 360, 0); var y = v.y * Math.cos(t) - v.z * Math.sin(t); var z = v.y * Math.sin(t) + v.z * Math.cos(t); pts.push({ x: v.x, y: y, z: z }); } return pts; }
+  function raMeridianPoints(raDeg, seg) { seg = seg || 120; var pts = []; for (var i = 0; i <= seg; i++) pts.push(raDecToVec(raDeg, -90 + i / seg * 180)); return pts; }
+  function decParallelPoints(decDeg, seg) { seg = seg || 200; var pts = []; for (var i = 0; i <= seg; i++) pts.push(raDecToVec(i / seg * 360, decDeg)); return pts; }
+
+  function globePickMansion() {
+    globe.raycaster.setFromCamera(new THREE.Vector2(globe.ndc.x, globe.ndc.y), globe.camera);
+    var hits = globe.raycaster.intersectObject(globe.starPoints, false);
+    for (var i = 0; i < hits.length; i++) {
+      var idx = hits[i].index;
+      if (idx >= 0 && STARS[idx].mansion) return { mansionId: STARS[idx].mansion, starId: STARS[idx].id, point: hits[i].point };
+    }
+    var areaHits = globe.raycaster.intersectObjects(globe.hitMeshes, false);
+    if (areaHits.length > 0) return { mansionId: areaHits[0].object.userData.mansionId, starId: null, point: areaHits[0].point };
+    return null;
+  }
+  function globeUpdateHover() {
+    var picked = globePickMansion();
+    var found = picked ? picked.mansionId : '';
+    var tooltip = document.getElementById('celestialTooltip');
+    if (found !== globe.hovered) {
+      globe.hovered = found;
+      if (found) {
+        var mansion = MANSION_BY_ID[found];
+        var observed = false;
+        for (var ri = 0; ri < observeState.records.length; ri++) if (observeState.records[ri].mansionId === found) { observed = true; break; }
+        var hidx = -1;
+        for (var mii = 0; mii < MANSIONS.length; mii++) if (MANSIONS[mii].id === found) { hidx = mii + 1; break; }
+        tooltip.innerHTML = mansion.fullName + '<span>' + mansion.direction + ' · 第' + hidx + '宿</span><span class="hint">' + (observed ? '已观测' : '点击观测') + '</span>';
+        tooltip.setAttribute('data-visible', 'true');
+      } else {
+        tooltip.textContent = '';
+        tooltip.setAttribute('data-visible', 'false');
+      }
+    }
+    if (picked) {
+      var p = picked.point.clone().project(globe.camera);
+      tooltip.style.left = ((p.x * 0.5 + 0.5) * globe.container.clientWidth) + 'px';
+      tooltip.style.top = ((-p.y * 0.5 + 0.5) * globe.container.clientHeight) + 'px';
+    }
+  }
+  function globeUpdateHighlight() {
+    var sel = observeState.selectedId;
+    var changed = false;
+    for (var i = 0; i < STARS.length; i++) {
+      var v = 0;
+      if (sel && STARS[i].mansion === sel) v = 1;
+      else if (STARS[i].mansion === globe.hovered) v = 0.5;
+      if (globe.starHighlights[i] !== v) { globe.starHighlights[i] = v; changed = true; }
+    }
+    if (changed) globe.starGeometry.getAttribute('aHighlight').needsUpdate = true;
+  }
+
+  function initCelestialGlobe() {
+    if (globe.started) return;
+    globe.started = true;
+    var container = document.getElementById('celestialGlobe');
+    if (typeof THREE === 'undefined') {
+      container.innerHTML = '<div class="record-empty" style="text-align:center;padding:48px 24px;">天球加载失败<br><span style="font-size:11px;">需联网加载 Three.js</span></div>';
+      return;
+    }
+    globe.container = container;
+    globe.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    globe.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    container.appendChild(globe.renderer.domElement);
+
+    globe.scene = new THREE.Scene();
+    globe.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+    globe.camera.position.set(0, 2.4, 26);
+    globe.camera.lookAt(0, 0, 0);
+
+    globe.sphereGroup = new THREE.Group();
+    globe.sphereGroup.rotation.y = Math.PI * 0.85;
+    globe.sphereGroup.rotation.x = -0.08;
+    globe.scene.add(globe.sphereGroup);
+    globe.starGroup = new THREE.Group();
+    globe.sphereGroup.add(globe.starGroup);
+    globe.gridGroup = new THREE.Group();
+    globe.sphereGroup.add(globe.gridGroup);
+
+    globe.starPositions = new Float32Array(STARS.length * 3);
+    var starSizes = new Float32Array(STARS.length);
+    var starAlphas = new Float32Array(STARS.length);
+    globe.starHighlights = new Float32Array(STARS.length);
+    for (var i = 0; i < STARS.length; i++) {
+      var p = raDecToVec(STARS[i].ra, STARS[i].dec);
+      globe.starPositions[i * 3] = p.x; globe.starPositions[i * 3 + 1] = p.y; globe.starPositions[i * 3 + 2] = p.z;
+      starSizes[i] = sizeForMag(STARS[i].mag);
+      starAlphas[i] = alphaForMag(STARS[i].mag);
+      globe.starHighlights[i] = 0;
+      if (STARS[i].id === '心') { globe.xinIndex = i; globe.xinRa = STARS[i].ra; globe.xinDec = STARS[i].dec; globe.xinCurrent = { x: p.x, y: p.y, z: p.z }; }
+    }
+    globe.starGeometry = new THREE.BufferGeometry();
+    globe.starGeometry.setAttribute('position', new THREE.BufferAttribute(globe.starPositions, 3));
+    globe.starGeometry.setAttribute('aSize', new THREE.BufferAttribute(starSizes, 1));
+    globe.starGeometry.setAttribute('aAlpha', new THREE.BufferAttribute(starAlphas, 1));
+    globe.starGeometry.setAttribute('aHighlight', new THREE.BufferAttribute(globe.starHighlights, 1));
+
+    globe.starMaterial = new THREE.ShaderMaterial({
+      uniforms: { uScale: { value: 400 }, uOpacity: { value: 0 } },
+      vertexShader: 'attribute float aSize; attribute float aAlpha; attribute float aHighlight; uniform float uScale; varying float vAlpha; varying float vHighlight; void main() { vAlpha = aAlpha; vHighlight = aHighlight; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = aSize * (1.0 + aHighlight * 0.55) * uScale / -mv.z; gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'uniform float uOpacity; varying float vAlpha; varying float vHighlight; void main() { vec2 c = gl_PointCoord - 0.5; float d = length(c); if (d > 0.5) discard; float edge = smoothstep(0.5, 0.34, d); float a = clamp(vAlpha + vHighlight * 0.3, 0.0, 1.0) * uOpacity * edge; gl_FragColor = vec4(0.91, 0.886, 0.824, a); }',
+      transparent: true, depthWrite: false
+    });
+    globe.starPoints = new THREE.Points(globe.starGeometry, globe.starMaterial);
+    globe.starGroup.add(globe.starPoints);
+
+    for (var mi = 0; mi < MANSIONS.length; mi++) {
+      var mansion = MANSIONS[mi];
+      var primary = STAR_BY_ID[mansion.id];
+      if (!primary) continue;
+      var pv = raDecToVec(primary.ra, primary.dec);
+      var pts = [];
+      for (var s = 1; s < mansion.starCount; s++) {
+        var sec = STAR_BY_ID[mansion.id + '-' + s];
+        if (!sec) continue;
+        var sv = raDecToVec(sec.ra, sec.dec);
+        pts.push(pv.x, pv.y, pv.z, sv.x, sv.y, sv.z);
+      }
+      if (pts.length === 0) continue;
+      var lmat = new THREE.LineBasicMaterial({ color: 0xe8e2d2, transparent: true, opacity: 0, depthWrite: false });
+      var lines = new THREE.LineSegments(lineGeoFromArr(new Float32Array(pts)), lmat);
+      globe.starGroup.add(lines);
+      globe.mansionLines[mansion.id] = lines;
+    }
+
+    var hitGeometry = new THREE.SphereGeometry(1.2, 8, 8);
+    var hitMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, colorWrite: false, depthWrite: false, depthTest: false });
+    for (var hi = 0; hi < MANSIONS.length; hi++) {
+      var hc = raDecToVec(MANSIONS[hi].ra, MANSIONS[hi].dec);
+      var hm = new THREE.Mesh(hitGeometry, hitMaterial);
+      hm.position.set(hc.x, hc.y, hc.z);
+      hm.userData.mansionId = MANSIONS[hi].id;
+      globe.starGroup.add(hm);
+      globe.hitMeshes.push(hm);
+    }
+
+    globe.gridMat = new THREE.LineBasicMaterial({ color: 0xe8e2d2, transparent: true, opacity: 0, depthWrite: false });
+    globe.eclipticMat = new THREE.LineBasicMaterial({ color: 0xe8e2d2, transparent: true, opacity: 0, depthWrite: false });
+    function addGrid(arr, mat) { globe.gridGroup.add(new THREE.Line(lineGeoFromArr(arr), mat)); }
+    addGrid(vecsToLinePositions(equatorPoints()), globe.eclipticMat);
+    addGrid(vecsToLinePositions(eclipticPoints()), globe.eclipticMat);
+    addGrid(vecsToLinePositions(decParallelPoints(-28)), globe.gridMat);
+    for (var ra = 0; ra < 360; ra += 60) addGrid(vecsToLinePositions(raMeridianPoints(ra)), globe.gridMat);
+    addGrid(vecsToLinePositions(decParallelPoints(-45)), globe.gridMat);
+    addGrid(vecsToLinePositions(decParallelPoints(45)), globe.gridMat);
+
+    globe.raycaster = new THREE.Raycaster();
+    globe.raycaster.params.Points = { threshold: 0.55 };
+    globe.dragTarget.y = globe.sphereGroup.rotation.y;
+    globe.dragTarget.x = globe.sphereGroup.rotation.x;
+    globe.lastMoveTime = performance.now();
+
+    function onDown(e) { globe.dragging = true; globe.moved = false; globe.pointer.downX = e.clientX; globe.pointer.downY = e.clientY; globe.pointer.x = e.clientX; globe.pointer.y = e.clientY; globe.dragTarget.y = globe.sphereGroup.rotation.y; globe.dragTarget.x = globe.sphereGroup.rotation.x; }
+    function onMove(e) {
+      globe.ndc.x = (e.clientX / container.clientWidth) * 2 - 1;
+      globe.ndc.y = -(e.clientY / container.clientHeight) * 2 + 1;
+      if (globe.dragging) {
+        var dx = e.clientX - globe.pointer.x, dy = e.clientY - globe.pointer.y;
+        globe.pointer.x = e.clientX; globe.pointer.y = e.clientY;
+        if (Math.hypot(e.clientX - globe.pointer.downX, e.clientY - globe.pointer.downY) > 4) globe.moved = true;
+        globe.dragTarget.y -= dx * 0.005;
+        globe.dragTarget.x -= dy * 0.005;
+        globe.dragTarget.x = clamp(globe.dragTarget.x, -1.2, 1.2);
+        globe.lastMoveTime = performance.now();
+      }
+    }
+    function onUp() { globe.dragging = false; globe.lastMoveTime = performance.now(); }
+    function onWheel(e) { e.preventDefault(); globe.camera.position.z = clamp(globe.camera.position.z + e.deltaY * 0.02, 16, 44); }
+    function onClick(e) { if (globe.moved) return; globe.ndc.x = (e.clientX / container.clientWidth) * 2 - 1; globe.ndc.y = -(e.clientY / container.clientHeight) * 2 + 1; var picked = globePickMansion(); if (picked) handleObserve(picked.mansionId, picked.starId); }
+
+    globe.renderer.domElement.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    globe.renderer.domElement.addEventListener('wheel', onWheel, { passive: false });
+    globe.renderer.domElement.addEventListener('click', onClick);
+
+    function resize() {
+      var w = container.clientWidth, h = container.clientHeight;
+      if (w === 0 || h === 0) return;
+      globe.renderer.setSize(w, h, false);
+      globe.camera.aspect = w / h;
+      globe.camera.updateProjectionMatrix();
+      globe.starMaterial.uniforms.uScale.value = h * 0.5 * Math.min(window.devicePixelRatio || 1, 2);
+    }
+    resize();
+    if (typeof ResizeObserver !== 'undefined') { globe.ro = new ResizeObserver(resize); globe.ro.observe(container); }
+
+    var t0 = performance.now();
+    var starPosAttr = globe.starGeometry.getAttribute('position');
+
+    function loop() {
+      if (!globe.running) return;
+      var intro = (performance.now() - t0) / 1500;
+      globe.starMaterial.uniforms.uOpacity.value = smoothstep(0, 0.3, intro);
+      globe.raycaster.params.Points.threshold = globe.camera.position.z * 0.022;
+
+      var sel = observeState.selectedId;
+      var introLines = smoothstep(0.25, 0.6, intro);
+      for (var id in globe.mansionLines) {
+        var base = 0.09;
+        if (sel && id === sel) base = 0.32;
+        else if (sel) base = 0.055;
+        globe.mansionLines[id].material.opacity = base * introLines;
+      }
+      globe.gridMat.opacity = 0.05 * smoothstep(0.5, 0.85, intro);
+      globe.eclipticMat.opacity = 0.1 * smoothstep(0.5, 0.85, intro);
+
+      if (!globe.dragging && performance.now() - globe.lastMoveTime > 2200) {
+        globe.sphereGroup.rotation.y += 0.0006;
+        globe.dragTarget.y = globe.sphereGroup.rotation.y;
+      }
+      globe.sphereGroup.rotation.y += (globe.dragTarget.y - globe.sphereGroup.rotation.y) * 0.16;
+      globe.sphereGroup.rotation.x += (globe.dragTarget.x - globe.sphereGroup.rotation.x) * 0.16;
+
+      var drift = globalDriftAngle(globe.time);
+      globe.starGroup.rotation.y += (drift - globe.starGroup.rotation.y) * 0.06;
+
+      var a = xinAnomalyOffset(globe.time);
+      var tx = raDecToVec(globe.xinRa + a[0], globe.xinDec + a[1]);
+      globe.xinCurrent.x += (tx.x - globe.xinCurrent.x) * 0.06;
+      globe.xinCurrent.y += (tx.y - globe.xinCurrent.y) * 0.06;
+      globe.xinCurrent.z += (tx.z - globe.xinCurrent.z) * 0.06;
+      if (globe.xinIndex >= 0) {
+        globe.starPositions[globe.xinIndex * 3] = globe.xinCurrent.x;
+        globe.starPositions[globe.xinIndex * 3 + 1] = globe.xinCurrent.y;
+        globe.starPositions[globe.xinIndex * 3 + 2] = globe.xinCurrent.z;
+        starPosAttr.needsUpdate = true;
+      }
+
+      globeUpdateHover();
+      globeUpdateHighlight();
+      globe.renderer.render(globe.scene, globe.camera);
+      globe.rafId = requestAnimationFrame(loop);
+    }
+    globe.running = true;
+    globe.rafId = requestAnimationFrame(loop);
+  }
+
+  function setObserveTime(time) { globe.time = time; }
+
+  function stopCelestialGlobe() {
+    globe.running = false;
+    if (globe.rafId) cancelAnimationFrame(globe.rafId);
+    if (globe.ro) globe.ro.disconnect();
+  }
+
+  function handleObserve(mansionId, starId) {
+    observeMansion(mansionId, starId);
+    renderObservation(); renderRecords(); renderHeader(); renderAction();
+  }
+
+  /* ============ Drought 页面 ============ */
+  var DR_EVIDENCE = [
+    { id: 'wind', name: '风场', x: 720, y: 300, description: '由东南而来。\n\n风力并不强，\n但持续稳定。', observation: '观测：\n近地风由东南向西北移动。' },
+    { id: 'cloud', name: '云层', x: 300, y: 240, description: '东南方向存在低云。\n\n云量正在增加，\n但尚未形成降雨。', observation: '观测：\n水汽正在向西北方向移动。' },
+    { id: 'river', name: '河流', x: 500, y: 610, description: '水位低于往年同期。\n\n但上游仍有持续水流。', observation: '观测：\n水汽来源充足，\n但未能进入旱区。' },
+    { id: 'field', name: '旱区', x: 400, y: 470, description: '土壤表层干燥。\n\n田地龟裂，久旱不雨。', observation: '观测：\n水分并非完全消失，\n只是没有以降雨抵达。' },
+    { id: 'terrain', name: '山势', x: 500, y: 130, description: '山脉横亘于东南方向。\n\n湿润气流经过山地后，\n可能改变运动方向。', observation: '观测：\n山势阻隔气流，\n可能改变水汽输送。' }
+  ];
+  var DR_RELATIONS = [
+    { id: 'wind-cloud', source: 'wind', target: 'cloud', description: '东南风持续向西北移动，云层也由东南方向移动。二者存在直接关系。' },
+    { id: 'terrain-cloud', source: 'terrain', target: 'cloud', description: '山脉横亘东南，湿润气流经过山地后改变方向，可能影响云层运动。' },
+    { id: 'cloud-field', source: 'cloud', target: 'field', description: '云量增加但尚未形成降雨，旱区因此仍然干旱。' },
+    { id: 'river-field', source: 'river', target: 'field', description: '河流并未断流，但旱区表层仍然干燥，水汽没有以降雨抵达。' },
+    { id: 'wind-field', source: 'wind', target: 'field', description: '持续稳定的东南风带走地表水分，可能加剧地表蒸发。' }
+  ];
+  var DR_TASKS = [
+    { id: 'wind', label: '观察风场' }, { id: 'cloud', label: '观察云层' }, { id: 'river', label: '检查河流' }, { id: 'field', label: '查看旱区' }, { id: 'terrain', label: '判断山势' }
+  ];
+  var DR_EVENT_BODY = '长安以东，久旱不雨。\n\n河水下降，田土龟裂。\n当地官吏认为这是天象异常之后\n产生的灾异。\n\n但地方记录显示，\n往年此时并非没有降雨。';
+  var DR_EVENT_RECORDS = {
+    observation_error: '此前的天象观测未发现明确异常。\n\n但当地旱灾仍在持续。',
+    celestial_anomaly: '此前观测到的星宿异常，\n与当地灾异同时出现。',
+    mandate_change: '当地官吏已经将此次旱灾解释为天命变化。\n\n但你决定先观察天地本身。'
+  };
+  var DR_JUDGEMENTS = [
+    { id: 'A', label: '天地无水，因此发生旱灾。', correct: false, text: '天地无水，因此发生旱灾。\n\n但河流并未断流，\n低洼之处仍然湿润。\n这个判断，似乎忽略了什么。' },
+    { id: 'B', label: '水汽存在，但受到风向与地形影响，降雨条件尚未形成。', correct: true, text: '水汽并未消失。\n\n风将水汽带向山地，\n地形改变了气流运动，\n云层因此无法形成有效降雨。\n\n旱灾不是「没有水」。\n而是水没有以合适的方式抵达这里。', understanding: '你开始理解：\n\n自然并非只能被观察。\n如果能够利用已经存在的力量，\n便可以改变结果。' },
+    { id: 'C', label: '这是天命变化的征兆，无法通过自然规律解释。', correct: false, text: '这是天命变化的征兆，\n无法通过自然规律解释。\n\n但风向、云层与山势之间的联系，\n并不像是偶然。' }
+  ];
+  var DR_MOUNTAINS = [
+    { id: 'qinling', name: '不周山', path: 'M 220 170 L 300 95 L 380 150 L 460 80 L 540 140 L 620 90 L 700 150 L 760 115', labelX: 480, labelY: 72 },
+    { id: 'taihang', name: '洛山', path: 'M 700 240 L 775 160 L 845 215 L 915 165 L 975 245', labelX: 845, labelY: 150 },
+    { id: 'funiu', name: '蒙山', path: 'M 380 345 L 455 275 L 525 335 L 600 280 L 670 350', labelX: 545, labelY: 270 }
+  ];
+  var DR_RIVER = { name: '洛水', path: 'M 20 640 C 200 590 360 660 520 630 S 770 605 970 640' };
+  var DR_CLOUDS = [
+    { x: 640, y: 205, rx: 150, ry: 38 }, { x: 560, y: 260, rx: 190, ry: 48 }, { x: 470, y: 320, rx: 200, ry: 52 }
+  ];
+  var DR_CONTOURS = ['M 40 120 C 200 70 360 150 520 90 S 820 120 960 70', 'M 40 180 C 180 140 320 200 500 150 S 800 170 960 130', 'M 30 260 C 200 220 380 280 560 230 S 820 250 970 210', 'M 30 360 C 200 320 380 380 560 330 S 820 350 970 310', 'M 30 460 C 200 420 380 480 560 430 S 820 450 970 410', 'M 30 560 C 200 520 380 580 560 530 S 820 550 970 510', 'M 30 660 C 200 630 380 675 560 645 S 820 660 970 640'];
+  var DR_MOISTURE = ['M 120 610 C 220 560 300 520 380 470', 'M 200 625 C 300 575 380 535 460 485', 'M 300 640 C 390 590 470 545 540 500'];
+  var DR_RAIN_CENTER = { x: 560, y: 360 };
+  var DR_REASONING_TARGETS = ['terrain', 'wind', 'river'];
+  var DR_REASONING_INSIGHT = '旱灾并非无水。\n\n而是水汽受地势影响，\n未能进入旱区。';
+
+  var drState = { investigated: [], relations: [], relationMode: false, selection: [], feedback: null, reasoningSolved: false };
+  var drStarted = false;
+
+  function drNode(id) { for (var i = 0; i < DR_EVIDENCE.length; i++) if (DR_EVIDENCE[i].id === id) return DR_EVIDENCE[i]; return null; }
+  function drFindRelation(a, b) {
+    for (var i = 0; i < DR_RELATIONS.length; i++) {
+      var r = DR_RELATIONS[i];
+      if ((r.source === a && r.target === b) || (r.source === b && r.target === a)) return r;
+    }
+    return null;
+  }
+
+  function drBuildMap() {
+    var svg = document.getElementById('dMapSvg');
+    var html = '<defs><marker id="wind-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--map-line-muted)" /></marker></defs>';
+    for (var i = 0; i < DR_CONTOURS.length; i++) html += '<path class="contour-line" d="' + DR_CONTOURS[i] + '" />';
+    html += '<g class="field-zone" id="dFieldZone"><rect class="map-field" x="360" y="430" width="280" height="160" /><line class="map-field-line" x1="360" y1="480" x2="640" y2="480" /><line class="map-field-line" x1="360" y1="530" x2="640" y2="530" /><line class="map-field-line" x1="450" y1="430" x2="450" y2="590" /><line class="map-field-line" x1="550" y1="430" x2="550" y2="590" /><text class="map-label" x="500" y="580" text-anchor="middle">旱区</text></g>';
+    for (var j = 0; j < DR_MOISTURE.length; j++) html += '<path class="moisture-line" d="' + DR_MOISTURE[j] + '" />';
+    html += '<g class="river-zone" id="dRiverZone"><path class="map-river" d="' + DR_RIVER.path + '" /><text class="map-label" x="490" y="672" text-anchor="middle">洛水</text></g>';
+    html += '<g class="rain-layer">';
+    for (var r = 0; r < 26; r++) { var col = r % 13, row = Math.floor(r / 13); var rx = DR_RAIN_CENTER.x - 140 + col * 24, ry = DR_RAIN_CENTER.y - 40 + row * 40; html += '<line class="rain-line" x1="' + rx + '" y1="' + ry + '" x2="' + (rx + 6) + '" y2="' + (ry + 14) + '" />'; }
+    html += '</g>';
+    html += '<g class="cloud-zone" id="dCloudZone" opacity="0.22">';
+    for (var c = 0; c < DR_CLOUDS.length; c++) html += '<ellipse class="cloud-ellipse" cx="' + DR_CLOUDS[c].x + '" cy="' + DR_CLOUDS[c].y + '" rx="' + DR_CLOUDS[c].rx + '" ry="' + DR_CLOUDS[c].ry + '" />';
+    html += '</g>';
+    html += '<g class="mountain-layer">';
+    for (var m = 0; m < DR_MOUNTAINS.length; m++) html += '<g class="mountain-range" id="dMountain' + m + '"><path class="map-mountain" d="' + DR_MOUNTAINS[m].path + '" /><text class="map-label" x="' + DR_MOUNTAINS[m].labelX + '" y="' + DR_MOUNTAINS[m].labelY + '" text-anchor="middle">' + DR_MOUNTAINS[m].name + '</text></g>';
+    html += '</g>';
+    html += '<rect class="wind-zone" id="dWindZone" x="620" y="380" width="340" height="200" />';
+    html += '<g class="wind-layer" pointer-events="none"><line x1="820" y1="360" x2="680" y2="315" class="wind-line" marker-end="url(#wind-arrow)" /><line x1="800" y1="410" x2="660" y2="365" class="wind-line" marker-end="url(#wind-arrow)" /><line x1="770" y1="455" x2="635" y2="412" class="wind-line" marker-end="url(#wind-arrow)" /></g>';
+    html += '<text class="map-north" x="500" y="30" text-anchor="middle">北 ↑</text>';
+    svg.innerHTML = html;
+    document.getElementById('dFieldZone').addEventListener('click', function () { drHandleNode('field'); });
+    document.getElementById('dRiverZone').addEventListener('click', function () { drHandleNode('river'); });
+    document.getElementById('dCloudZone').addEventListener('click', function () { drHandleNode('cloud'); });
+    document.getElementById('dWindZone').addEventListener('click', function () { drHandleNode('wind'); });
+    var mts = document.querySelectorAll('#dMapSvg .mountain-range');
+    for (var mi = 0; mi < mts.length; mi++) { (function (el) { el.addEventListener('click', function () { drHandleNode('terrain'); }); })(mts[mi]); }
+  }
+
+  var drWindParts = [];
+  function drInitWind() {
+    var canvas = document.getElementById('dWindCanvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    function resize() {
+      var w = canvas.clientWidth, h = canvas.clientHeight;
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(w * dpr); canvas.height = Math.floor(h * dpr);
+      var count = w < 640 ? 48 : 110;
+      drWindParts = [];
+      for (var i = 0; i < count; i++) drWindParts.push({ x: Math.random() * w, y: Math.random() * h, age: Math.random() * 240, life: 240, len: 14 + Math.random() * 18, w: w, h: h });
+    }
+    var last = performance.now();
+    function loop(now) {
+      var dt = Math.min(now - last, 40); last = now;
+      var w = canvas.clientWidth, h = canvas.clientHeight;
+      ctx.setTransform(Math.min(window.devicePixelRatio || 1, 2), 0, 0, Math.min(window.devicePixelRatio || 1, 2), 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      for (var i = 0; i < drWindParts.length; i++) {
+        var p = drWindParts[i];
+        p.x += -0.55 * 0.707 * dt * 0.06 + (Math.random() - 0.5) * 0.1;
+        p.y += -0.55 * 0.707 * dt * 0.06 + (Math.random() - 0.5) * 0.1;
+        p.age += dt * 0.06;
+        if (p.age >= p.life) { p.age = 0; p.x = Math.random() * w; p.y = Math.random() * h; }
+        if (p.x < -20) p.x = w + 20; if (p.x > w + 20) p.x = -20;
+        if (p.y < -20) p.y = h + 20; if (p.y > h + 20) p.y = -20;
+        var lr = 1 - p.age / p.life;
+        ctx.strokeStyle = 'rgba(232,226,210,' + (0.06 * (0.4 + lr * 0.6)).toFixed(3) + ')';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + 0.707 * p.len, p.y + 0.707 * p.len); ctx.stroke();
+      }
+      requestAnimationFrame(loop);
+    }
+    resize();
+    requestAnimationFrame(loop);
+    if (typeof ResizeObserver !== 'undefined') { new ResizeObserver(function () { resize(); }).observe(canvas); }
+  }
+
+  function drRenderReasoning() {
+    var el = document.getElementById('reasoningPanel');
+    var html = '<div class="reasoning-head"><span class="reasoning-title">理</span><span class="reasoning-hint">尝试解释三者关系</span></div><div class="reasoning-chips">';
+    var observed = 0;
+    for (var i = 0; i < DR_REASONING_TARGETS.length; i++) {
+      var done = drState.investigated.indexOf(DR_REASONING_TARGETS[i]) >= 0;
+      if (done) observed++;
+      html += '<span class="reasoning-chip' + (done ? ' done' : '') + '"><span class="reasoning-chip-mark">' + (done ? '●' : '○') + '</span>' + drNode(DR_REASONING_TARGETS[i]).name + '</span>';
+    }
+    html += '</div>';
+    if (drState.reasoningSolved) {
+      html += '<div class="reasoning-insight">' + DR_REASONING_INSIGHT + '</div>';
+    } else {
+      var can = observed >= DR_REASONING_TARGETS.length;
+      html += '<button type="button" class="ic-btn"' + (can ? '' : ' disabled') + ' id="dReasonBtn">' + (can ? '尝试解释 →' : '已观察 ' + observed + ' / ' + DR_REASONING_TARGETS.length) + '</button>';
+    }
+    el.innerHTML = html;
+    var rb = document.getElementById('dReasonBtn');
+    if (rb) rb.addEventListener('click', function () { drState.reasoningSolved = true; drRenderMap(); drRenderControls(); });
+  }
+
+  function drRenderEvent() {
+    var page02 = null; try { page02 = sessionStorage.getItem('guantian_judgement'); } catch (e) {}
+    var html = '<h2 class="event-title">旱</h2>';
+    html += '<div class="event-location">长安以东 · 地皇八年 · 旱灾第七日</div>';
+    html += '<div class="event-body">' + DR_EVENT_BODY + '</div>';
+    if (page02 && DR_EVENT_RECORDS[page02]) {
+      html += '<section class="event-record"><h3 class="panel-title">事件记录</h3><p class="event-record-text">' + DR_EVENT_RECORDS[page02] + '</p></section>';
+    }
+    html += '<section class="event-tasks"><h3 class="panel-title">当前任务</h3><ul class="task-list">';
+    for (var i = 0; i < DR_TASKS.length; i++) {
+      var t = DR_TASKS[i], done = drState.investigated.indexOf(t.id) >= 0;
+      html += '<li class="task-item' + (done ? ' done' : '') + '"><span class="task-mark">' + (done ? '●' : '○') + '</span><span class="task-label">' + t.label + '</span></li>';
+    }
+    html += '</ul></section>';
+    if (drState.relations.indexOf('wind-cloud') >= 0 && drState.relations.indexOf('terrain-cloud') >= 0) {
+      html += '<section class="weather-inference"><h3 class="panel-title">天气推演</h3><div class="causal-chain">';
+      var chain = ['东南风', '携带水汽', '云层向山地移动', '山势改变气流'];
+      for (var c = 0; c < chain.length; c++) {
+        html += '<div class="causal-step"><span class="causal-label">' + chain[c] + '</span>' + (c < chain.length - 1 ? '<span class="causal-arrow">↓</span>' : '') + '</div>';
+      }
+      html += '</div><p class="weather-inference-text">当前环境并非完全缺乏水汽。\n\n水汽正在移动，\n但地形正在改变其运动方式。\n\n降雨条件尚未形成。</p></section>';
+    }
+    document.getElementById('eventPanel').innerHTML = html;
+  }
+
+  function drRenderEvidence() {
+    var el = document.getElementById('evidencePanel');
+    var html = '<h2 class="panel-title">观测记录</h2>';
+    if (drState.investigated.length === 0) {
+      html += '<div class="evidence-empty">尚未进行观测。</div>';
+    } else {
+      html += '<ul class="evidence-list">';
+      for (var i = 0; i < drState.investigated.length; i++) {
+        var n = drNode(drState.investigated[i]);
+        html += '<li class="evidence-item"><div class="evidence-index mono">' + String(i + 1).padStart(2, '0') + '</div><div class="evidence-name">' + n.name + '</div><div class="evidence-desc">' + n.description + '</div><div class="evidence-observation">' + n.observation + '</div></li>';
+      }
+      html += '</ul>';
+    }
+    el.innerHTML = html;
+  }
+
+  function drRenderControls() {
+    var inv = drState.investigated.length, rel = drState.relations.length;
+    document.getElementById('dHeaderProgress').textContent = '观测 ' + inv + ' / 5';
+    document.getElementById('icEvidence').textContent = '已获得证据：' + inv + ' / 5';
+    document.getElementById('icRelations').textContent = '已建立关系：' + rel;
+    var relBtn = document.getElementById('relBtn');
+    relBtn.disabled = !(inv >= 2 || drState.relationMode);
+    relBtn.textContent = drState.relationMode ? '退出推演' : '建立关系';
+    var judgeBtn = document.getElementById('judgeBtn');
+    var can = inv >= 4 && rel >= 3;
+    judgeBtn.disabled = !can;
+    judgeBtn.textContent = can ? '推演天气 →' : '继续观测';
+  }
+
+  function drRenderMap() {
+    var mapEl = document.getElementById('envMap');
+    mapEl.classList.toggle('map-static', drState.relationMode);
+    function zone(id, nodeId) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.classList.toggle('investigated', drState.investigated.indexOf(nodeId) >= 0);
+      el.classList.toggle('selected', drState.selection.indexOf(nodeId) >= 0);
+    }
+    zone('dFieldZone', 'field'); zone('dRiverZone', 'river'); zone('dCloudZone', 'cloud'); zone('dWindZone', 'wind');
+    var mts = document.querySelectorAll('#dMapSvg .mountain-range');
+    for (var i = 0; i < mts.length; i++) {
+      mts[i].classList.toggle('investigated', drState.investigated.indexOf('terrain') >= 0);
+      mts[i].classList.toggle('selected', drState.selection.indexOf('terrain') >= 0);
+    }
+    var lhtml = '';
+    for (var j = 0; j < drState.relations.length; j++) {
+      var rel = null;
+      for (var k = 0; k < DR_RELATIONS.length; k++) if (DR_RELATIONS[k].id === drState.relations[j]) rel = DR_RELATIONS[k];
+      if (!rel) continue;
+      var s = drNode(rel.source), t = drNode(rel.target);
+      lhtml += '<line class="relation-line" x1="' + s.x + '" y1="' + s.y + '" x2="' + t.x + '" y2="' + t.y + '" />';
+    }
+    if (drState.reasoningSolved) lhtml += '<path class="prediction-path" d="M 300 610 C 400 560 470 470 500 400 S 520 300 560 260" />';
+    document.getElementById('envMapLines').innerHTML = lhtml;
+    var op = drState.reasoningSolved ? 0.6 : (drState.relations.indexOf('wind-cloud') >= 0 ? 0.5 : (drState.investigated.indexOf('cloud') >= 0 ? 0.4 : 0.22));
+    document.getElementById('dCloudZone').setAttribute('opacity', op);
+    var rm = document.getElementById('relationMode');
+    rm.hidden = !drState.relationMode;
+    if (drState.relationMode) {
+      var body;
+      if (drState.feedback) body = '<div class="relation-mode-feedback">' + drState.feedback + '</div>';
+      else body = '<div class="relation-mode-hint">' + (drState.selection.length === 0 ? '选择两个已观测的证据' : '再选择一个证据') + '</div>';
+      var sel = '';
+      if (drState.selection.length > 0) {
+        sel = '<div class="relation-mode-selection">';
+        for (var s2 = 0; s2 < drState.selection.length; s2++) sel += '<span class="rm-chip">' + drNode(drState.selection[s2]).name + '</span>';
+        sel += '</div>';
+      }
+      rm.innerHTML = '<div class="relation-mode-title">关系推演</div>' + body + sel;
+    }
+    drRenderReasoning();
+  }
+
+  function drHandleNode(id) {
+    if (drState.relationMode) {
+      if (drState.investigated.indexOf(id) < 0) { drState.feedback = '需先观测此证据。'; drRenderMap(); return; }
+      if (drState.selection.indexOf(id) >= 0) { drState.selection = drState.selection.filter(function (x) { return x !== id; }); drRenderMap(); return; }
+      if (drState.selection.length === 0) { drState.selection = [id]; drState.feedback = null; drRenderMap(); return; }
+      var a = drState.selection[0];
+      var rel = drFindRelation(a, id);
+      drState.selection = [];
+      if (rel) {
+        if (drState.relations.indexOf(rel.id) < 0) drState.relations.push(rel.id);
+        drState.feedback = '已建立关系：' + drNode(rel.source).name + ' → ' + drNode(rel.target).name + '。' + rel.description;
+        drRenderEvent();
+      } else {
+        drState.feedback = '暂无足够证据证明二者存在直接关系。';
+      }
+      drRenderMap(); drRenderControls();
+    } else {
+      if (drState.investigated.indexOf(id) < 0) drState.investigated.push(id);
+      drRenderMap(); drRenderControls(); drRenderEvent(); drRenderEvidence();
+    }
+  }
+
+  function startDrought() {
+    if (drStarted) return;
+    drStarted = true;
+    drBuildMap();
+    drInitWind();
+    drRenderEvent(); drRenderEvidence(); drRenderControls(); drRenderMap();
+    document.getElementById('relBtn').addEventListener('click', function () { drState.relationMode = !drState.relationMode; drState.selection = []; drState.feedback = null; drRenderMap(); drRenderControls(); });
+    document.getElementById('judgeBtn').addEventListener('click', function () { if (drState.investigated.length >= 4 && drState.relations.length >= 3) document.getElementById('droughtModal').hidden = false; });
+    var optsEl = document.getElementById('dJudgementOptions');
+    var ohtml = '';
+    for (var j = 0; j < DR_JUDGEMENTS.length; j++) ohtml += '<button type="button" class="judgement-option" data-idx="' + j + '">' + DR_JUDGEMENTS[j].label + '</button>';
+    optsEl.innerHTML = ohtml;
+    optsEl.addEventListener('click', function (e) {
+      var b = e.target.closest('.judgement-option');
+      if (!b) return;
+      showDroughtResult(DR_JUDGEMENTS[Number(b.getAttribute('data-idx'))]);
+    });
+  }
+
+  function showDroughtResult(opt) {
+    try { sessionStorage.setItem('guantian_knowledge', JSON.stringify({ observation: true, recognition: opt.correct, borrowMomentum: true })); } catch (e) {}
+    document.getElementById('droughtModal').hidden = true;
+    var r = document.getElementById('droughtResult');
+    var html = '<div class="drought-result-title">你的判断：</div>';
+    html += '<div class="drought-result-text">' + opt.text + '</div>';
+    if (opt.correct) html += '<div class="drought-result-badge">识理 +1</div>';
+    if (opt.understanding) html += '<div class="drought-result-understanding">' + opt.understanding + '</div>';
+    html += '<div class="drought-result-ability">获得能力：<span>借势</span></div>';
+    r.innerHTML = html;
+    r.hidden = false;
+    setTimeout(function () { r.hidden = true; goTo('borrow'); }, 2600);
+  }
+
+  /* ============ Borrow 页面 ============ */
+  var borrowState = { mode: 'follow', direction: 0, strength: 40, status: 'idle', result: null, completed: false };
+  var borrowStarted = false;
+
+  function borrowDirEff() { return Math.max(0, 1 - Math.abs(borrowState.direction - 18) / 30); }
+  function borrowRainfall() { return borrowDirEff() * Math.min(borrowState.strength / 60, 1) * 0.7; }
+  function borrowCloud() {
+    var dirEff = borrowDirEff();
+    var windEff = borrowState.strength <= 60 ? borrowState.strength / 60 : Math.max(0, 1 - (borrowState.strength - 60) / 30);
+    return Math.min(100, 70 * 0.4 + dirEff * 100 * 0.4 + windEff * 100 * 0.2);
+  }
+  function borrowDamage() { return Math.max(0, borrowState.strength - 75) * 0.8; }
+
+  function borrowIndicator(label, value) {
+    var v = Math.max(0, Math.min(100, value));
+    return '<div class="indicator"><div class="indicator-label">' + label + '</div><div class="indicator-bar"><div class="indicator-fill" style="width:' + v + '%"></div></div></div>';
+  }
+
+  function borrowFeedbackText() {
+    if (borrowState.status === 'result' && borrowState.result) {
+      if (borrowState.result === 'effective') return '云层形成。\n降雨开始。\n\n旱灾暂时得到缓解。';
+      if (borrowState.result === 'overdrive') return '风势过强。\n\n云层被迅速吹散。\n部分农田受到损害。';
+      return '云层短暂聚集，\n但不足以形成有效降雨。';
+    }
+    if (borrowState.strength > 75) return '风势超过自然承受范围。\n农田受到损害。';
+    if (borrowRainfall() >= 0.5) return '云层聚集。\n降雨条件形成。';
+    if (borrowState.mode === 'borrow' && borrowState.direction !== 0) return '风势发生变化。\n水汽运动轨迹正在改变。';
+    return '尚未干预。';
+  }
+
+  function borrowRenderControl() {
+    var html = '<section class="cp-section"><h2 class="panel-title">当前环境</h2><dl class="env-list">';
+    var env = [['风', '东南 → 西北', '稳定'], ['云', '东南方向低云', '未形成降雨'], ['水汽', '充足', null], ['地形', '山地阻挡', null]];
+    for (var i = 0; i < env.length; i++) {
+      html += '<div class="env-row"><dt>' + env[i][0] + '</dt><dd><span>' + env[i][1] + '</span>' + (env[i][2] ? '<span class="env-sub">' + env[i][2] + '</span>' : '') + '</dd></div>';
+    }
+    html += '</dl></section>';
+    html += '<section class="cp-section"><h3 class="panel-title">可利用之势</h3><ul class="momentum-list">';
+    var modes = [['follow', '顺势', false, null], ['borrow', '借风', false, null], ['create', '强行造化', true, '造化 · 尚未掌握']];
+    for (var j = 0; j < modes.length; j++) {
+      var m = modes[j];
+      var cls = 'momentum-option' + (borrowState.mode === m[0] ? ' active' : '') + (m[2] ? ' locked' : '');
+      html += '<li><button type="button" class="' + cls + '" data-mode="' + m[0] + '"' + (m[2] ? ' disabled' : '') + '>';
+      html += '<span class="momentum-name">' + m[1] + '</span>';
+      if (m[3]) html += '<span class="momentum-note">' + m[3] + '</span>';
+      else html += '<span class="momentum-state">' + (borrowState.mode === m[0] ? '当前' : '') + '</span>';
+      html += '</button></li>';
+    }
+    html += '</ul></section>';
+    if (borrowState.mode === 'borrow') {
+      html += '<section class="cp-section">';
+      html += '<div class="slider-control"><div class="slider-head"><span class="slider-label">风势方向</span><span class="slider-value mono">' + (borrowState.direction > 0 ? '+' + borrowState.direction + '°' : borrowState.direction + '°') + '</span></div>';
+      html += '<input type="range" min="-30" max="30" step="1" value="' + borrowState.direction + '" class="range-slider" id="borrowDirSlider" style="--progress:' + ((borrowState.direction + 30) / 60 * 100) + '%"><div class="slider-ticks"><span>−30°</span><span>0°</span><span>+30°</span></div></div>';
+      html += '<div class="slider-control"><div class="slider-head"><span class="slider-label">风力</span><span class="slider-value mono">' + borrowState.strength + '</span></div>';
+      html += '<input type="range" min="0" max="100" step="1" value="' + borrowState.strength + '" class="range-slider" id="borrowStrSlider" style="--progress:' + borrowState.strength + '%"><div class="slider-ticks"><span>0</span><span>50</span><span>100</span></div></div>';
+      html += '</section>';
+    }
+    document.getElementById('borrowControlPanel').innerHTML = html;
+    var ds = document.getElementById('borrowDirSlider');
+    if (ds) ds.addEventListener('input', function () { borrowState.direction = Number(ds.value); borrowUpdate(); });
+    var ss = document.getElementById('borrowStrSlider');
+    if (ss) ss.addEventListener('input', function () { borrowState.strength = Number(ss.value); borrowUpdate(); });
+  }
+
+  function borrowRenderResult() {
+    var ground = borrowState.strength > 75 ? Math.round(borrowDamage()) : Math.round(borrowRainfall() * 100);
+    var html = '<h2 class="panel-title">自然反馈</h2>';
+    html += '<div class="natural-feedback">' + borrowFeedbackText() + '</div>';
+    html += '<div class="indicators">';
+    html += borrowIndicator('水汽利用', Math.round(borrowDirEff() * 100));
+    html += borrowIndicator('云层形成', Math.round(borrowCloud()));
+    html += borrowIndicator('地面影响', ground);
+    html += '</div>';
+    document.getElementById('borrowResultPanel').innerHTML = html;
+  }
+
+  function borrowUpdateMap() {
+    var dir = borrowState.direction, str = borrowState.strength, cloud = borrowCloud();
+    var raining = cloud >= 75;
+    document.getElementById('borrowWind').setAttribute('style', 'transform: rotate(' + dir + ' 500 350); opacity: ' + (0.25 + str / 100 * 0.55));
+    document.getElementById('borrowMoisture').setAttribute('style', 'transform: rotate(' + dir + ' 500 350); opacity: 0.65');
+    document.getElementById('borrowCloud').setAttribute('style', 'opacity: ' + (0.18 + cloud / 100 * 0.5) + '; transform: translate(' + (cloud / 100 * -70) + ' ' + (cloud / 100 * -40) + ') rotate(' + dir + ' 500 350)');
+    document.getElementById('borrowField').classList.toggle('wet', raining);
+    document.getElementById('borrowRain').hidden = !raining;
+  }
+
+  function borrowUpdate() {
+    borrowRenderControl(); borrowRenderResult(); borrowUpdateMap();
+    document.getElementById('borrowActionMode').textContent = '当前干预：' + (borrowState.mode === 'follow' ? '顺势' : '借风');
+  }
+
+  function showBorrowResult() {
+    var r = document.getElementById('borrowResultOverlay');
+    var html = '<div class="borrow-result-title">借势完成</div>';
+    html += '<div class="borrow-result-text">你没有制造雨。\n\n你只是改变了风。\n\n水汽因此进入山地，\n云层开始聚集，\n降雨最终形成。\n\n天地没有按照你的命令改变。\n\n你只是找到了\n天地本来就存在的方向。</div>';
+    html += '<div class="borrow-result-ability">获得：<span>「借势」</span></div>';
+    html += '<div class="knowledge-tree">';
+    var tree = ['观象', '识理', '借势'];
+    for (var i = 0; i < tree.length; i++) html += '<div class="knowledge-step"><span class="knowledge-name' + (i === tree.length - 1 ? ' current' : '') + '">' + tree[i] + '</span>' + (i < tree.length - 1 ? '<span class="knowledge-arrow">↓</span>' : '') + '</div>';
+    html += '</div>';
+    html += '<div class="borrow-result-question">如果你能够改变风，\n\n那么下一步呢？\n\n如果天地本没有雨，\n你能否让它下雨？</div>';
+    html += '<button type="button" class="ic-btn" id="borrowContinue">继续 →</button>';
+    r.innerHTML = html;
+    r.hidden = false;
+    document.getElementById('borrowContinue').addEventListener('click', function () { r.hidden = true; goTo('awakening'); });
+  }
+
+  function startBorrow() {
+    if (borrowStarted) {
+      if (borrowState.completed) {
+        var doneBtn = document.getElementById('borrowActionBtn');
+        doneBtn.textContent = '确认借势 →';
+        doneBtn.disabled = false;
+        showBorrowResult();
+      }
+      return;
+    }
+    borrowStarted = true;
+    var knowledge = {}; try { knowledge = JSON.parse(sessionStorage.getItem('guantian_knowledge') || '{}'); } catch (e) {}
+    if (knowledge.borrowMomentum !== true) {
+      document.getElementById('borrowLocked').hidden = false;
+      setTimeout(function () { document.getElementById('borrowLocked').hidden = true; goTo('drought', startDrought); }, 1600);
+      return;
+    }
+    // rain lines
+    var rainHtml = '';
+    for (var ri = 0; ri < 36; ri++) {
+      var rx = 280 + (ri % 9) * 56, ry = 90 + (ri % 12) * 40, rd = (ri % 6) * 0.2;
+      rainHtml += '<line x1="' + rx + '" y1="' + ry + '" x2="' + rx + '" y2="' + (ry + 18) + '" class="rain-line" style="animation-delay:' + rd + 's"></line>';
+    }
+    document.getElementById('borrowRain').innerHTML = rainHtml;
+
+    borrowUpdate();
+
+    document.getElementById('borrowControlPanel').addEventListener('click', function (e) {
+      var b = e.target.closest('.momentum-option'); if (!b || b.disabled) return;
+      var m = b.getAttribute('data-mode');
+      borrowState.mode = m;
+      if (m === 'follow') { borrowState.direction = 0; borrowState.strength = 40; }
+      borrowUpdate();
+    });
+
+    document.getElementById('borrowActionBtn').addEventListener('click', function () {
+      if (borrowState.status === 'result' && borrowState.result !== 'effective') {
+        borrowState.status = 'idle'; borrowState.result = null; borrowUpdate(); return;
+      }
+      if (borrowState.status === 'simulating') return;
+      borrowState.status = 'simulating';
+      document.getElementById('borrowActionBtn').textContent = '正在观测结果……';
+      document.getElementById('borrowActionBtn').disabled = true;
+      setTimeout(function () {
+        var rp = borrowRainfall();
+        var r = borrowState.strength > 75 ? 'overdrive' : (rp >= 0.5 ? 'effective' : 'insufficient');
+        borrowState.result = r; borrowState.status = 'result';
+        if (r === 'effective') {
+          borrowState.completed = true;
+          try { sessionStorage.setItem('guantian_borrow_result', 'effective'); } catch (e) {}
+          document.getElementById('borrowActionBtn').textContent = '确认借势 →';
+          document.getElementById('borrowActionBtn').disabled = false;
+          showBorrowResult();
+        } else {
+          borrowRenderResult();
+          document.getElementById('borrowActionBtn').textContent = '重新观测';
+          document.getElementById('borrowActionBtn').disabled = false;
+        }
+      }, 3000);
+    });
+  }
+
+  /* ============ Awakening 页面 ============ */
+  var AWAKE_NODES = [
+    { id: 'star-anomaly', name: '心宿异常', cat: '天象', status: '已观测' },
+    { id: 'southeast-wind', name: '东南风', cat: '气象', status: '已观测' },
+    { id: 'moisture', name: '水汽运动', cat: '气象', status: '已观测' },
+    { id: 'cloud', name: '云层形成', cat: '气象', status: '已观测' },
+    { id: 'mountain', name: '山地阻挡', cat: '地理', status: '已观测' },
+    { id: 'borrow-wind', name: '借风', cat: '方法', status: '已掌握' }
+  ];
+  var AWAKE_POS = {
+    'star-anomaly': [500, 80], 'southeast-wind': [280, 210], mountain: [720, 210],
+    moisture: [500, 330], cloud: [500, 450], 'borrow-wind': [140, 330],
+    rainfall: [500, 570], 'guide-cloud': [770, 500], 'celestial-wind': [770, 500], 'gather-cloud': [770, 500]
+  };
+  var AWAKE_BASE = [
+    ['star-anomaly', 'southeast-wind'], ['star-anomaly', 'mountain'], ['southeast-wind', 'moisture'], ['mountain', 'moisture'], ['moisture', 'cloud']
+  ];
+  var AWAKE_TECH = {
+    'guide-cloud': { id: 'guide-cloud', name: '引云', src: ['southeast-wind', 'moisture', 'mountain'], desc: '重新组织已有风势与水汽，使云层向特定区域聚集。' },
+    'celestial-wind': { id: 'celestial-wind', name: '观风', src: ['star-anomaly', 'southeast-wind', 'cloud'], desc: '通过天象异常判断风势变化，提前预测局部天气变化。' },
+    'gather-cloud': { id: 'gather-cloud', name: '聚云', src: ['moisture', 'mountain', 'cloud'], desc: '利用山地地形与水汽，使云层在山前聚集。' }
+  };
+  var AWAKE_COMBOS = [
+    { ids: ['southeast-wind', 'moisture', 'mountain'], result: 'guide-cloud' },
+    { ids: ['star-anomaly', 'southeast-wind', 'cloud'], result: 'celestial-wind' },
+    { ids: ['moisture', 'mountain', 'cloud'], result: 'gather-cloud' }
+  ];
+  var AWAKE_CONN = {
+    'guide-cloud': [['southeast-wind', 'moisture'], ['moisture', 'mountain'], ['mountain', 'cloud'], ['cloud', 'rainfall'], ['cloud', 'guide-cloud']],
+    'celestial-wind': [['star-anomaly', 'southeast-wind'], ['southeast-wind', 'cloud'], ['cloud', 'celestial-wind']],
+    'gather-cloud': [['moisture', 'mountain'], ['mountain', 'cloud'], ['cloud', 'gather-cloud']]
+  };
+  var AWAKE_REL = {
+    'guide-cloud': ['wind-moisture', 'moisture-mountain', 'mountain-cloud', 'cloud-rainfall'],
+    'celestial-wind': ['star-wind', 'wind-cloud'],
+    'gather-cloud': ['moisture-mountain', 'mountain-cloud']
+  };
+
+  var awakeState = { selected: [], technique: null, status: 'idle', invalid: false, relations: [] };
+  var awakeStarted = false;
+
+  function awakeNodeName(id) {
+    for (var i = 0; i < AWAKE_NODES.length; i++) if (AWAKE_NODES[i].id === id) return AWAKE_NODES[i].name;
+    if (AWAKE_TECH[id]) return AWAKE_TECH[id].name;
+    if (id === 'rainfall') return '降雨';
+    return id;
+  }
+  function awakeFindCombo(ids) {
+    var norm = ids.slice().sort();
+    for (var i = 0; i < AWAKE_COMBOS.length; i++) {
+      var c = AWAKE_COMBOS[i].ids.slice().sort();
+      if (c.length === norm.length && c.every(function (v, j) { return v === norm[j]; })) return AWAKE_COMBOS[i];
+    }
+    return null;
+  }
+
+  function awakeRenderPanel() {
+    var html = '<h2 class="panel-title">已有知识</h2>';
+    var cats = ['天象', '气象', '地理', '方法'];
+    var idx = 0;
+    for (var c = 0; c < cats.length; c++) {
+      var nodes = AWAKE_NODES.filter(function (n) { return n.cat === cats[c]; });
+      if (nodes.length === 0) continue;
+      html += '<section class="knowledge-category"><h3 class="knowledge-category-label">' + cats[c] + '</h3>';
+      for (var n = 0; n < nodes.length; n++) {
+        idx++;
+        var node = nodes[n];
+        var sel = awakeState.selected.indexOf(node.id) >= 0;
+        html += '<button type="button" class="knowledge-node' + (sel ? ' selected' : '') + '" data-id="' + node.id + '">';
+        html += '<span class="knowledge-index mono">' + String(idx).padStart(2, '0') + '</span><span class="knowledge-name">' + node.name + '</span><span class="knowledge-status">' + node.status + '</span></button>';
+      }
+      html += '</section>';
+    }
+    if (awakeState.status === 'generated' && awakeState.technique) {
+      html += '<section class="knowledge-category"><h3 class="knowledge-category-label">新知识</h3>';
+      html += '<button type="button" class="knowledge-node" disabled><span class="knowledge-index mono">' + String(idx + 1).padStart(2, '0') + '</span><span class="knowledge-name">' + awakeState.technique.name + '</span><span class="knowledge-status">新生成</span></button>';
+      html += '<button type="button" class="knowledge-node" disabled><span class="knowledge-index mono">' + String(idx + 2).padStart(2, '0') + '</span><span class="knowledge-name">天演</span><span class="knowledge-status">新生成</span></button>';
+      html += '</section>';
+    }
+    document.getElementById('awakeKnowledgePanel').innerHTML = html;
+  }
+
+  function awakeRenderCombo() {
+    var html = '<h2 class="panel-title">组合</h2>';
+    if (awakeState.status === 'generated' && awakeState.technique) {
+      var t = awakeState.technique;
+      html += '<div class="combination-result"><div class="combination-result-name">' + t.name + '</div>';
+      html += '<div class="combination-result-source"><span class="combination-result-source-label">来源：</span>';
+      for (var i = 0; i < t.src.length; i++) html += (i > 0 ? ' + ' : '') + awakeNodeName(t.src[i]);
+      html += '</div><div class="combination-result-desc">' + t.desc + '</div>';
+      html += '<div class="combination-result-nature">术法性质：<span>借势</span></div></div>';
+    } else if (awakeState.selected.length === 0) {
+      html += '<p class="combination-hint">选择三个已有知识，\n尝试发现新的关系。</p>';
+    } else {
+      html += '<div class="combination-selection">';
+      for (var j = 0; j < awakeState.selected.length; j++) html += '<div class="combination-selection-line">' + (j > 0 ? '<span class="combination-plus">+</span>' : '') + '<span class="combination-selection-name">' + awakeNodeName(awakeState.selected[j]) + '</span></div>';
+      html += '</div>';
+    }
+    if (awakeState.invalid && awakeState.status !== 'generated') html += '<p class="combination-invalid-feedback">这些知识之间\n尚未发现直接关系。</p>';
+    if (awakeState.status !== 'generated') {
+      var can = awakeState.selected.length === 3;
+      html += '<button type="button" class="infer-button" id="awakeInferBtn" style="' + (can ? '' : 'opacity:0.3;pointer-events:none') + '">' + (awakeState.status === 'connecting' ? '推演中……' : '关系推演') + '</button>';
+    }
+    document.getElementById('awakeComboPanel').innerHTML = html;
+    var ib = document.getElementById('awakeInferBtn');
+    if (ib) ib.addEventListener('click', awakeInfer);
+  }
+
+  function awakeRenderGraph() {
+    var svg = document.getElementById('awakeGraphSvg');
+    var html = '';
+    for (var i = 0; i < AWAKE_BASE.length; i++) {
+      var a = AWAKE_POS[AWAKE_BASE[i][0]], b = AWAKE_POS[AWAKE_BASE[i][1]];
+      html += '<line x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '" class="base-connection"></line>';
+    }
+    if (awakeState.technique && (awakeState.status === 'connecting' || awakeState.status === 'generated')) {
+      var conns = AWAKE_CONN[awakeState.technique.id] || [];
+      for (var k = 0; k < conns.length; k++) {
+        var ca = AWAKE_POS[conns[k][0]], cb = AWAKE_POS[conns[k][1]];
+        html += '<line x1="' + ca[0] + '" y1="' + ca[1] + '" x2="' + cb[0] + '" y2="' + cb[1] + '" class="evo-connection" style="animation-delay:' + (k * 200) + 'ms"></line>';
+      }
+    }
+    for (var n = 0; n < AWAKE_NODES.length; n++) {
+      var node = AWAKE_NODES[n], pos = AWAKE_POS[node.id];
+      var sel = awakeState.selected.indexOf(node.id) >= 0;
+      html += '<g class="graph-node' + (sel ? ' selected' : '') + '"><circle cx="' + pos[0] + '" cy="' + pos[1] + '" r="' + (sel ? 12 : 8) + '"></circle><text x="' + pos[0] + '" y="' + (pos[1] + 26) + '" text-anchor="middle">' + node.name + '</text></g>';
+    }
+    if (awakeState.status === 'generated' && awakeState.technique) {
+      if (awakeState.technique.id === 'guide-cloud') {
+        var rp = AWAKE_POS.rainfall;
+        html += '<g class="emergent-node"><circle cx="' + rp[0] + '" cy="' + rp[1] + '" r="8"></circle><text x="' + rp[0] + '" y="' + (rp[1] + 26) + '" text-anchor="middle">降雨</text></g>';
+      }
+      var tp = AWAKE_POS[awakeState.technique.id];
+      html += '<g class="emergent-node highlight"><circle cx="' + tp[0] + '" cy="' + tp[1] + '" r="12"></circle><text x="' + tp[0] + '" y="' + (tp[1] + 26) + '" text-anchor="middle">' + awakeState.technique.name + '</text></g>';
+    }
+    svg.innerHTML = html;
+  }
+
+  function awakeUpdate() {
+    awakeRenderPanel();
+    awakeRenderCombo();
+    awakeRenderGraph();
+    document.getElementById('awakeHeaderCount').textContent = '知识：' + (6 + (awakeState.status === 'generated' ? 2 : 0));
+    document.getElementById('awakeActionStatus').textContent = '已发现关系：' + awakeState.relations.length;
+  }
+
+  function awakeToggle(id) {
+    if (awakeState.status !== 'idle') return;
+    awakeState.invalid = false;
+    var i = awakeState.selected.indexOf(id);
+    if (i >= 0) { awakeState.selected.splice(i, 1); }
+    else if (awakeState.selected.length < 3) { awakeState.selected.push(id); }
+    awakeUpdate();
+  }
+
+  function awakeInfer() {
+    if (awakeState.selected.length !== 3) return;
+    var combo = awakeFindCombo(awakeState.selected);
+    if (!combo) { awakeState.invalid = true; awakeUpdate(); return; }
+    var t = AWAKE_TECH[combo.result];
+    awakeState.technique = t;
+    awakeState.status = 'connecting';
+    awakeState.invalid = false;
+    awakeUpdate();
+    setTimeout(function () {
+      document.getElementById('awakeRule').hidden = false;
+    }, 1800);
+    setTimeout(function () {
+      document.getElementById('awakeRule').hidden = true;
+      awakeState.relations = AWAKE_REL[t.id] || [];
+      awakeState.status = 'generated';
+      try { sessionStorage.setItem('guantian_awakening', JSON.stringify({ awakened: true, technique: t.id, discoveredRelations: AWAKE_REL[t.id] || [] })); } catch (e) {}
+      awakeUpdate();
+    }, 4000);
+  }
+
+  function startAwakening() {
+    if (awakeStarted) return;
+    awakeStarted = true;
+    try {
+      if (sessionStorage.getItem('guantian_borrow_result') !== 'effective') {
+        document.getElementById('awakeLocked').hidden = false;
+        setTimeout(function () { document.getElementById('awakeLocked').hidden = true; goTo('borrow', startBorrow); }, 1600);
+        return;
+      }
+    } catch (e) {}
+    awakeUpdate();
+    document.getElementById('awakeKnowledgePanel').addEventListener('click', function (e) {
+      var b = e.target.closest('.knowledge-node'); if (!b || b.disabled) return;
+      awakeToggle(b.getAttribute('data-id'));
+    });
+    document.getElementById('awakeContinueBtn').addEventListener('click', function () { goTo('mandate'); });
+  }
+
+  /* ============ Mandate 页面 ============ */
+  var MD_ORDER = ['state-monopoly', 'sect-autonomy', 'public-knowledge', 'seal-heaven'];
+  var MD_DECISIONS = {
+    'state-monopoly': { id: 'state-monopoly', title: '私藏观星术', pol: { c: 100, a: 20, s: 100 } },
+    'sect-autonomy': { id: 'sect-autonomy', title: '传于宗门', pol: { c: 30, a: 40, s: 100 } },
+    'public-knowledge': { id: 'public-knowledge', title: '公布天下', pol: { c: 20, a: 100, s: 100 } },
+    'seal-heaven': { id: 'seal-heaven', title: '封存观星术', pol: { c: 0, a: 0, s: 10 } }
+  };
+  var mandateState = { selected: null, confirmed: false };
+  var mandateBound = false;
+
+  function mandateRenderOptions() {
+    var el = document.getElementById('mandateOptions');
+    var html = '';
+    for (var i = 0; i < MD_ORDER.length; i++) {
+      var d = MD_DECISIONS[MD_ORDER[i]];
+      var active = mandateState.selected === d.id;
+      html += '<button type="button" class="decision-option' + (active ? ' active' : '') + '" data-id="' + d.id + '"' + (mandateState.confirmed ? ' disabled' : '') + '>' + d.title + '</button>';
+    }
+    el.innerHTML = html;
+  }
+
+  function mandateChoose(id) {
+    if (mandateState.confirmed) return;
+    mandateState.selected = id;
+    mandateState.confirmed = true;
+    var d = MD_DECISIONS[id];
+    try {
+      sessionStorage.setItem('guantian_decision', JSON.stringify({ decision: id, politicalState: { knowledgeCentralization: d.pol.c, knowledgeAccessibility: d.pol.a, supernaturalIntervention: d.pol.s }, timestamp: Date.now() }));
+    } catch (e) {}
+    mandateRenderOptions();
+    setTimeout(function () {
+      goTo('ending');
+    }, 600);
+  }
+
+  function startMandate() {
+    try {
+      var raw = sessionStorage.getItem('guantian_awakening');
+      var ok = false;
+      if (raw) { var data = JSON.parse(raw); ok = Boolean(data.awakened); }
+      if (!ok) {
+        document.getElementById('mandateLocked').hidden = false;
+        setTimeout(function () { document.getElementById('mandateLocked').hidden = true; goTo('awakening', startAwakening); }, 1600);
+        return;
+      }
+    } catch (e) {
+      document.getElementById('mandateLocked').hidden = false;
+      setTimeout(function () { document.getElementById('mandateLocked').hidden = true; goTo('awakening', startAwakening); }, 1600);
+      return;
+    }
+
+    mandateState.selected = null;
+    mandateState.confirmed = false;
+    mandateRenderOptions();
+
+    if (!mandateBound) {
+      mandateBound = true;
+      document.getElementById('mandateOptions').addEventListener('click', function (e) {
+        var b = e.target.closest('.decision-option'); if (!b || b.disabled) return;
+        mandateChoose(b.getAttribute('data-id'));
+      });
+    }
+  }
+
+  /* ============ 背景音乐系统 ============ */
+  (function () {
+    var SOURCES = [
+      'bgm.mp3', 'background.mp3', 'music.mp3',
+      'assets/audio/bgm.mp3', 'assets/audio/background.mp3', 'assets/audio/music.mp3'
+    ];
+    var STORAGE_KEY = 'guantian_bgm_muted';
+    var TARGET_VOLUME = 0.2;
+    var FADE_MS = 2500;
+
+    var audio = null;
+    var muted = false;
+    var ready = false;
+    var fadeRaf = 0;
+
+    var btn = document.getElementById('bgmToggle');
+    try { muted = localStorage.getItem(STORAGE_KEY) === '1'; } catch (e) {}
+
+    function render() {
+      if (!btn) return;
+      btn.style.display = ready ? 'block' : 'none';
+      btn.classList.toggle('muted', muted);
+    }
+
+    function fadeTo(target, ms) {
+      if (!audio || muted) return;
+      cancelAnimationFrame(fadeRaf);
+      var from = audio.volume;
+      var t0 = performance.now();
+      function step(now) {
+        if (!audio || muted) return;
+        var t = Math.min(1, (now - t0) / ms);
+        audio.volume = from + (target - from) * t;
+        if (t < 1) fadeRaf = requestAnimationFrame(step);
+      }
+      fadeRaf = requestAnimationFrame(step);
+    }
+
+    function startPlayback() {
+      if (!audio || !ready || muted) return;
+      audio.volume = 0;
+      var p = audio.play();
+      if (p && typeof p.then === 'function') {
+        p.then(function () { fadeTo(TARGET_VOLUME, FADE_MS); })
+         .catch(function () { /* 自动播放被浏览器拦截，等待首次交互解锁 */ });
+      } else {
+        fadeTo(TARGET_VOLUME, FADE_MS);
+      }
+    }
+
+    function trySource(index) {
+      if (index >= SOURCES.length) { ready = false; render(); return; }
+      var a = new Audio();
+      a.preload = 'auto';
+      a.loop = true;
+      a.volume = 0;
+      var done = false;
+      a.addEventListener('canplay', function () {
+        if (done) return;
+        done = true;
+        audio = a;
+        ready = true;
+        render();
+        startPlayback();
+      }, { once: true });
+      a.addEventListener('error', function () {
+        if (done) return;
+        done = true;
+        try { a.src = ''; a.load(); } catch (e) {}
+        trySource(index + 1);
+      }, { once: true });
+      a.src = SOURCES[index];
+      a.load();
+    }
+
+    function setMuted(next) {
+      muted = next;
+      try { localStorage.setItem(STORAGE_KEY, muted ? '1' : '0'); } catch (e) {}
+      if (muted) {
+        cancelAnimationFrame(fadeRaf);
+        if (audio) audio.muted = true;
+      } else if (audio) {
+        audio.muted = false;
+        audio.volume = 0;
+        startPlayback();
+      }
+      render();
+    }
+
+    if (btn) btn.addEventListener('click', function () { setMuted(!muted); });
+
+    // Autoplay 解锁：浏览器禁止自动播放时，在任意首次交互后开始播放
+    window.addEventListener('pointerdown', function () {
+      if (ready && !muted && audio && audio.paused) startPlayback();
+    });
+
+    trySource(0);
+  })();
+
+  /* ============ 深链接：直接打开指定页面 ============ */
+  (function initDeepLink() {
+    var page = (location.hash || '').replace('#', '');
+    if (!page) return;
+    var valid = { intro: 1, observe: 1, drought: 1, borrow: 1, awakening: 1, mandate: 1, ending: 1 };
+    if (!valid[page]) return;
+    try {
+      if (page === 'awakening' || page === 'mandate') {
+        sessionStorage.setItem('guantian_knowledge', JSON.stringify({ observation: true, recognition: true, borrowMomentum: true }));
+        sessionStorage.setItem('guantian_borrow_result', 'effective');
+      }
+      if (page === 'mandate') {
+        sessionStorage.setItem('guantian_awakening', JSON.stringify({ awakened: true, technique: 'guide-cloud', discoveredRelations: [] }));
+      }
+    } catch (e) {}
+    goTo(page);
+  })();
+})();
+</script>
+</body>
+</html>
